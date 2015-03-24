@@ -1,1 +1,42 @@
-#config
+#!/bin/bash
+#Configuratino file
+
+#Global Variables
+declare SUFFIX=$(date +'%Y-%m-%d_%H-%M')
+declare DIR="/tmp/rbd-meta-backup-$SUFFIX"
+
+#rbd pools to backup
+declare -a pools=( images volumes )
+
+#Binaries
+ASTUTE_YAML="/etc/fuel/astute.yaml"
+GSC="$PYT /usr/bin/get_service_credentials.py"
+GIT="/usr/bin/git"
+SSH="/usr/bin/ssh"
+SCP="/usr/bin/scp"
+PYT="/usr/bin/python"
+YUM="/usr/bin/yum -y"
+RM="/bin/rm -rf"
+MV="/bin/mv"
+SCR="/usr/bin/screen"
+MAKE="/usr/bin/make"
+AWK="/usr/bin/awk"
+GREP="/bin/grep"
+HEAD="/usr/bin/head"
+MKDIR="/bin/mkdir -p"
+CP="/bin/cp -R"
+SCTL="/usr/bin/supervisorctl"
+FUEL="/usr/bin/fuel"
+KILLALL="/usr/bin/killall"
+CURL="/usr/bin/curl"
+
+#Colors an appearence
+RED="echo -en \\033[1;31m"
+GREEN="echo -en \\033[1;32m"
+RESET="echo -en \\033[0;39m"
+YELLOW="echo -en \\e[0;93m"
+BOLD=$(tput bold)
+export COLUMNS=$(tput cols)
+TOEND=$(tput hpa ${COLUMNS})$(tput cub 6)
+
+

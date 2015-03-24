@@ -1,30 +1,154 @@
 #!/bin/bash
 
-SUFFIX=$(date +'%Y-%m-%d_%H-%M')
+DEBUG=true
 
-TEMP_DIR="/tmp/rbd-meta-backup-$SUFFIX"
+function show_usage {
+    echo "Usage:"
+    echo "  $0 command"
+    echo
+    echo "Available commands: (Note: work in progress)"
+    echo "help: show this message"
+    echo "Options:"
+    ${GREEN}
+    echo "  *--compute : Use compute environment"
+    echo "  *--ceph    : Use ceph environment"
+    echo "  * -- Required parameter"
+    echo "  --debug    : to show some debug messages"
+    ${RESET}
+    echo "Commands  :"
+    echo "  list: List spare nodes in compute/ceph environment"
+    echo "  info: Info about corrsponding node in compute/ceph list"
+    echo "  boot: to boot up node"
+    echo
+    echo "Examples:"
+    echo "  $0 --compute list   : Lists all compute nodes from config/computes_to_add"
+    echo "  $0 --ceph info 2    : Info about second node from the file config/cephs_to_add"
+    echo "  $0 --compute boot 1 : Boot first compute from the file config/computes_to_add"
 
-mkdir $TEMP_DIR
+}
 
-for pool in $(rados lspools); do
+function parse_options {
+    opts="$@"
+    for opt in $@; do
+      case $opt in
+        -d|--debug)   DEBUG=true
+                      shift
+                      ;;
+        --nodebug)    DEBUG=false
+                      shift
+                      ;;
+        --)           shift
+                      nonopts+=("$@")
+                      return
+                      ;;
+        help|boot|deploy|start|stop|remove)
+                      nonopts+=("$@")
+                      return
+                      ;;
+        -*)           ${YELLOW}
+                      echo "Unrecognized option: $opt" 1>&2
+                      ${RESET}
+                      exit 1
+                      ;;
+        *)            nonopts+=("$opt")
+                      ;;
+      esac
+    done
+}
+
+function self {
+
+make_dir_if_not_exist
+save_metadata
+
+}
+
+
+function make_dir_if_not_exist {
+
+  echo "creating something"
+  if [ -d $DIR ]; then
+    debug "directory already exists"
+    for i in ${pools[@]} do
+    mkdir $TEMP_DIR/$pool
+
+}
+
+function save_metadata {
+
+  for pool in ${pools[@]} do
     images=$(rbd -p $pool ls 2>/dev/null)
     numimages=$(echo $images|sed '/^$/d'|wc -l)
     if [ "$numimages" -eq 0 ]; then
         continue;
     fi
-
-    mkdir $TEMP_DIR/$pool
     echo $images > $TEMP_DIR/$pool/images
-
-    rados -p $pool get rbd_directory $TEMP_DIR/$pool/rbd_directory
+    rados -p $pool get rbd_directory $DIR/$pool/rbd_directory
 
     for image in $(echo $images); do
-        rbd -p $pool info $image > $TEMP_DIR/$pool/$image.rbd
+        rbd -p $pool info $image > $DIR/$pool/$image.rbd
     done
 
-done
+  done
 
-tar  czf --directory=/tmp rbd-meta-backup-$SUFFIX.tar.gz $TEMP_DIR
+}
 
 
+function retry_checker {
 
+    tries=0
+    echo "checking with command \"$*\""
+    until eval $*; do
+      rc=$?
+      ((tries++))
+      echo "try number $tries"
+      echo "return code is $rc"
+      if [ $tries -gt $CHECK_RETRIES ]; then
+      failure=1
+      break
+    fi
+      sleep 1
+    done
+
+}
+
+
+function check_ready {
+
+    #Uses a custom command to ensure a container is ready
+    update_credentials
+    failure=0
+    echo "checking that node or service is available: $1 $2"
+    case $1 in
+      node) retry_checker "fuel node | grep '$2' | grep 'True'" ;;
+      *) echo "No defined test for determining if $1 is ready.";;
+    esac
+
+    if [ $failure -eq 1 ]; then
+      echo "ERROR: $1 failed to start."
+      return 1
+    else
+      echo "$1 is ready."
+      return 0
+    fi
+
+}
+
+function update_credentials {
+
+    credentialfile=$(mktemp /tmp/servicepws.XXXXX)
+    $GSC $ASTUTE_YAML > $credentialfile
+    . $credentialfile
+    rm -f $credentialfile
+
+}
+
+function debug {
+
+  if $DEBUG; then
+    ${YELLOW}
+    echo $@
+    ${RESET}
+  fi
+
+}
