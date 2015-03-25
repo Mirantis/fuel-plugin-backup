@@ -10,20 +10,12 @@ function show_usage {
     echo "help: show this message"
     echo "Options:"
     ${GREEN}
-    echo "  *--compute : Use compute environment"
-    echo "  *--ceph    : Use ceph environment"
-    echo "  * -- Required parameter"
     echo "  --debug    : to show some debug messages"
     ${RESET}
     echo "Commands  :"
-    echo "  list: List spare nodes in compute/ceph environment"
-    echo "  info: Info about corrsponding node in compute/ceph list"
     echo "  boot: to boot up node"
     echo
     echo "Examples:"
-    echo "  $0 --compute list   : Lists all compute nodes from config/computes_to_add"
-    echo "  $0 --ceph info 2    : Info about second node from the file config/cephs_to_add"
-    echo "  $0 --compute boot 1 : Boot first compute from the file config/computes_to_add"
 
 }
 
@@ -56,43 +48,111 @@ function parse_options {
     done
 }
 
-function self {
+function backup {
 
-make_dir_if_not_exist
-save_metadata
+  make_dir_if_not_exist
+  create_index_if_not_exist
+  save_metadata
+  create_snapshot
+  export_snapshot
+  update_index
+
+}
+
+function restore {
+
+  continue
 
 }
 
 
 function make_dir_if_not_exist {
 
-  echo "creating something"
-  if [ -d $DIR ]; then
-    debug "directory already exists"
-    for i in ${pools[@]} do
-    mkdir $TEMP_DIR/$pool
+  if [ -d $DEST ]; then
+    debug Destination folder already exists
+  else
+    debug "creating folder $DEST"
+    for pool in ${POOLS[@]}; do
+      debug creating $DEST/$pool
+      mkdir -p $DEST/$pool
+    done
+  fi
+}
 
+function create_index_if_not_exist {
+
+  debug "checking index file"
+  if [ -e $INDEX ]; then
+    debug $INDEX already exists
+  else
+     echo "#index file do not remove" > $INDEX
+  fi
 }
 
 function save_metadata {
 
-  for pool in ${pools[@]} do
+  for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
+    debug Images: $images
     numimages=$(echo $images|sed '/^$/d'|wc -l)
+    debug number of images $numimages
     if [ "$numimages" -eq 0 ]; then
         continue;
     fi
-    echo $images > $TEMP_DIR/$pool/images
-    rados -p $pool get rbd_directory $DIR/$pool/rbd_directory
+    echo $images > $DEST/$pool/images
+    rados -p $pool get rbd_directory $DEST/$pool/rbd_directory
 
     for image in $(echo $images); do
-        rbd -p $pool info $image > $DIR/$pool/$image.rbd
+        rbd -p $pool info $image > $DEST/$pool/$image.rbd
     done
 
   done
 
 }
 
+function create_snapshot {
+
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+        debug creating snapshot for: $pool/$image with name $SUFFIX
+        rbd -p $pool snap create --snap $SUFFIX $image
+    done
+
+  done
+
+}
+
+function delete_snapshot {
+
+  rbd snap rm images/a8289806-7ed4-4d69-b7c1-6fd2a9e5c4a5@2015-03-25_10-11
+
+}
+
+
+
+function export_snapshot {
+
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+        debug exporting snapshot: $pool/$image with name $image
+        rbd export ${pool}/${image}@${SUFFIX} ${DEST}/${pool}/${image}
+    done
+
+  done
+
+}
+
+function update_index {
+
+  LAST_UPDATE=`tail -2 $INDEX | head -1`
+  echo $SUFFIX >> $INDEX
+
+}
+
+
+function 
 
 function retry_checker {
 

@@ -1,8 +1,8 @@
 #!/bin/bash
 ## Initial
 
-. config/func
-. config/conf
+. project/func
+. project/conf
 
 #Sets var nonopts
 declare -a nonopts
@@ -21,12 +21,12 @@ fi
 
 command_seq=$COMMANDS_SEQUENCE
 
-if [ "$1" == "test" ]; then
+if [ "$1" == "backup" ]; then
   shift 1
-  self
-elif [ "$1" == "update_creds" ]; then
+  backup
+elif [ "$1" == "restore" ]; then
   shift 1
-  update_credentials
+  restore
 
 else
   echo "Invalid selection."

@@ -3,10 +3,12 @@
 
 #Global Variables
 declare SUFFIX=$(date +'%Y-%m-%d_%H-%M')
-declare DIR="/tmp/rbd-meta-backup-$SUFFIX"
+declare BACKUP="/backup"
+declare INDEX="/backup/index.db"
+declare DEST="$BACKUP/rbd-meta-backup-$SUFFIX"
 
 #rbd pools to backup
-declare -a pools=( images volumes )
+declare -a POOLS=( images volumes compute )
 
 #Binaries
 ASTUTE_YAML="/etc/fuel/astute.yaml"
