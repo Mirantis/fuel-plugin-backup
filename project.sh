@@ -24,10 +24,12 @@ command_seq=$COMMANDS_SEQUENCE
 if [ "$1" == "backup" ]; then
   shift 1
   backup
+elif [ "$1" == "purge" ]; then
+  shift 1
+  purge
 elif [ "$1" == "restore" ]; then
   shift 1
   restore
-
 else
   echo "Invalid selection."
   show_usage

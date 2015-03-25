@@ -50,6 +50,8 @@ function parse_options {
 
 function backup {
 
+list 
+
   make_dir_if_not_exist
   create_index_if_not_exist
   save_metadata
@@ -58,13 +60,6 @@ function backup {
   update_index
 
 }
-
-function restore {
-
-  continue
-
-}
-
 
 function make_dir_if_not_exist {
 
@@ -78,6 +73,34 @@ function make_dir_if_not_exist {
     done
   fi
 }
+
+function list {
+
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+
+      rbd snap ls ${pool}/${image}
+
+    done
+  done
+}
+
+function purge {
+
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+
+      rbd snap ls ${pool}/${image}
+      rbd snap purge ${pool}/${image}
+
+    done
+  done
+
+
+}
+
 
 function create_index_if_not_exist {
 
@@ -112,36 +135,54 @@ function save_metadata {
 
 function create_snapshot {
 
-  for pool in ${POOLS[@]}; do
+ for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-        debug creating snapshot for: $pool/$image with name $SUFFIX
-        rbd -p $pool snap create --snap $SUFFIX $image
+      debug creating snapshot for: $pool/$image with name ${image}-${SUFFIX}
+      rbd -p $pool snap create --snap ${image}-${SUFFIX} ${image}
     done
-
   done
 
 }
-
-function delete_snapshot {
-
-  rbd snap rm images/a8289806-7ed4-4d69-b7c1-6fd2a9e5c4a5@2015-03-25_10-11
-
-}
-
 
 
 function export_snapshot {
 
+
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-        debug exporting snapshot: $pool/$image with name $image
-        rbd export ${pool}/${image}@${SUFFIX} ${DEST}/${pool}/${image}
+  
+      latest_snap=`rbd snap ls $pool/$image | grep -v "SNAPID" | sort -r | head -n 1 |awk '{print $2}'`
+      if [[ -z "$latest_snap" ]]; then
+        debug info: no snap for $pool/$image to backup
+        continue
+      fi
+
+      image_dir="${DEST}/${image}"
+
+      if [[ ! -e "$image_dir" ]]; then
+        mkdir -p "$image_dir"
+        # full export the image
+        debug rbd export $pool/$image $image_dir
+        rbd export $pool/$image $image_dir >/dev/null 2>&1
+   
+        # export-diff the first snapshot
+        debug rbd export-diff $pool/$image@$latest_snap ${image_dir}_${latest_snap}
+        rbd export-diff $pool/$image@$latest_snap ${image_dir}_${latest_snap} >/dev/null 2>&1
+        continue
+      fi
+
+        # export-diff the snapshot from last one
+        last_snap=`ls $image_dir -1 -rt | tail -n 1 | awk -F_ '{print $2}'`
+        if [[ $latest_snap == $last_snap ]]; then
+          continue
+        fi
+        debug rbd export-diff --from-snap $last_snap $pool/$image@$latest_snap $image_dir/${last_snap}_${latest_snap}
+        rbd export-diff --from-snap $last_snap $pool/$image@$latest_snap $image_dir/${last_snap}_${latest_snap}  >/dev/null 2>&1
+
     done
-
   done
-
 }
 
 function update_index {
@@ -151,8 +192,6 @@ function update_index {
 
 }
 
-
-function 
 
 function retry_checker {
 
