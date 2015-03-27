@@ -110,6 +110,7 @@ function import_base {
 function import_diffs {
 
   rbd import-diff /path/to/diff backup_image
+  rbd diff --from-snap snap1 pool/image@snap2 --format plain
 
 }
 
