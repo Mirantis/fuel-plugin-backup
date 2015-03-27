@@ -10,8 +10,7 @@ INDEX="/backup/index.db"
 DEST="$BACKUP/backup-$SUFFIX"
 SNAPSHOTS="3"
 COPIES="10"
-
-
+LCK_FILE=`basename $0`.lck
 
 #rbd pools to backup
 declare -a POOLS=( images volumes compute )

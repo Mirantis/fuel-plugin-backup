@@ -49,7 +49,10 @@ function parse_options {
     done
 }
 
+
 function backup {
+
+  pid
 
   list                                     ## Just information
   make_dir_if_not_exist                    ## Create Skeleton
@@ -69,6 +72,18 @@ function backup {
 
 }
 
+function pid {
+  # Am I Running
+  if [ -f "${LCK_FILE}" ]; then
+    MYPID=`head -n 1 $LCK_FILE`
+    while [ -n "`ps -p ${MYPID} | grep ${MYPID}`" ]
+    do
+          echo `basename $0` is already running [$MYPID].
+          exit
+    done 
+  fi
+  echo $$ > $LCK_FILE
+}
 
 function create_not_create {
 
