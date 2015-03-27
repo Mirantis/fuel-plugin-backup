@@ -79,8 +79,7 @@ function restore {
 
   find_nearest_base $SOURCE                 ## Check the path and find the proper base image
   pid
-  check_the_path
-  find_nearest_base
+  check_the_path $SOURCE
 
 #  list                                      ## Just information
 #  import_base
@@ -116,7 +115,31 @@ function import_diffs {
 
 function find_nearest_base {
 
-  rbd import-diff /path/to/diff backup_image
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+      restore_from=`echo "$1" | sed -e 's#^'$BACKUP'/backup-##' | sed -r 's#/##'`
+      debug Starting restoration from: $restore_from
+      rc=`rbd snap ls $pool/$image | grep -v "SNAPID" | sort -n | grep $restore_from &> /dev/null; echo $?`
+      if [[ "$rc" > "0" ]]; then
+        ${YELLOW}
+        echo "There is no diff for $image for this date - $restore_from , skipping"
+        ${RESET}
+        continue
+      fi
+      declare -a base_array_date=(`rbd snap ls $pool/$image | grep -v "SNAPID" | sort -n | grep base | awk '{print $2}' | sed -e 's#'$BASEMARKER'-'$image'-##'`)
+#      for base in $base_array_date{@} ; do
+#        if [ "$restore_from" == "$base" ] ; then
+#           debug iploading base image without any diffs
+#        elif [[ "$base" > "$restore_from" ]] ; then
+       echo ${base_array_data[@]}
+
+
+
+#  rbd import-diff /path/to/diff backup_image
+
+     done 
+done
 
 }
 
@@ -134,8 +157,6 @@ function check_the_path {
     ${RESET}
     exit 1
   fi
-  restore_from=`echo "$1" | sed -e 's#^'$BACKUP'/backup-##' | sed -r 's#/##'`
-  debug Starting restoration from: $restore_from
 
 }
 
@@ -146,7 +167,7 @@ function create_not_create {
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-      base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep base | sort -n | head -n 1 |awk '{print $2}' | wc -l`
+      base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep base | sort -n | head -n 1 | awk '{print $2}' | wc -l`
       if [ "$base_images_count" -eq "0" ] ; then
         CREATE_BASE=true
       fi
