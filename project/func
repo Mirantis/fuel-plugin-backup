@@ -1,6 +1,7 @@
 #!/bin/bash
 
 DEBUG=true
+CREATE_BASE=false
 
 function show_usage {
     echo "Usage:"
@@ -50,15 +51,38 @@ function parse_options {
 
 function backup {
 
-list 
+  list                                     ## Just information
+  make_dir_if_not_exist                    ## Create Skeleton
+  save_metadata                            ## Metadata, wiil use it to understand the image size
 
-  make_dir_if_not_exist
-  create_index_if_not_exist
-  save_metadata
-  create_snapshot
-  export_snapshot
-  update_index
+  create_not_create
 
+  if [ $CREATE_BASE == true ] ; then
+    create_base_snapshots                  ## Every day snapshot to make DIFF from base to it
+    export_base_images                     ## Need to create if there is no Base images or other cases
+  else
+    create_today_snapshots                 ## Every day snapshot to make DIFF from base to it
+    export_diff_from_base_to_now
+  fi
+    delete_old_snapshots                   ## If snapshot count more
+    update_index                           ## User information about where base image is stored
+
+}
+
+
+function create_not_create {
+
+  #if there is no base images
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+      base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep base | sort -n | head -n 1 |awk '{print $2}' | wc -l`
+      if [ "$base_images_count" -eq "0" ] ; then
+        CREATE_BASE=true
+      fi
+    done
+  done
+  return
 }
 
 function make_dir_if_not_exist {
@@ -67,21 +91,36 @@ function make_dir_if_not_exist {
     debug Destination folder already exists
   else
     debug "creating folder $DEST"
+  fi
     for pool in ${POOLS[@]}; do
       debug creating $DEST/$pool
       mkdir -p $DEST/$pool
+      images=$(rbd -p $pool ls 2>/dev/null)
+      for image in $(echo $images); do
+        debug creating $DEST/$pool/$image
+        mkdir -p $DEST/$pool/$image
+      done
     done
+
+  debug "checking index file"
+  if [ -e $INDEX ]; then
+    debug $INDEX already exists
+  else
+     echo "#index file do not remove" > $INDEX
   fi
+
 }
 
 function list {
 
   for pool in ${POOLS[@]}; do
+    debug list of images for pool $pool
+    rbd -p $pool ls
+
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-
+      debug list of snapshots for_image $pool/$image
       rbd snap ls ${pool}/${image}
-
     done
   done
 }
@@ -97,19 +136,6 @@ function purge {
 
     done
   done
-
-
-}
-
-
-function create_index_if_not_exist {
-
-  debug "checking index file"
-  if [ -e $INDEX ]; then
-    debug $INDEX already exists
-  else
-     echo "#index file do not remove" > $INDEX
-  fi
 }
 
 function save_metadata {
@@ -133,62 +159,85 @@ function save_metadata {
 
 }
 
-function create_snapshot {
-
- for pool in ${POOLS[@]}; do
-    images=$(rbd -p $pool ls 2>/dev/null)
-    for image in $(echo $images); do
-      debug creating snapshot for: $pool/$image with name ${image}-${SUFFIX}
-      rbd -p $pool snap create --snap ${image}-${SUFFIX} ${image}
-    done
-  done
-
-}
-
-
-function export_snapshot {
-
+function create_base_snapshots {
 
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-  
-      latest_snap=`rbd snap ls $pool/$image | grep -v "SNAPID" | sort -r | head -n 1 |awk '{print $2}'`
-      if [[ -z "$latest_snap" ]]; then
-        debug info: no snap for $pool/$image to backup
-        continue
-      fi
-
-      image_dir="${DEST}/${image}"
-
-      if [[ ! -e "$image_dir" ]]; then
-        mkdir -p "$image_dir"
-        # full export the image
-        debug rbd export $pool/$image $image_dir
-        rbd export $pool/$image $image_dir >/dev/null 2>&1
-   
-        # export-diff the first snapshot
-        debug rbd export-diff $pool/$image@$latest_snap ${image_dir}_${latest_snap}
-        rbd export-diff $pool/$image@$latest_snap ${image_dir}_${latest_snap} >/dev/null 2>&1
-        continue
-      fi
-
-        # export-diff the snapshot from last one
-        last_snap=`ls $image_dir -1 -rt | tail -n 1 | awk -F_ '{print $2}'`
-        if [[ $latest_snap == $last_snap ]]; then
-          continue
-        fi
-        debug rbd export-diff --from-snap $last_snap $pool/$image@$latest_snap $image_dir/${last_snap}_${latest_snap}
-        rbd export-diff --from-snap $last_snap $pool/$image@$latest_snap $image_dir/${last_snap}_${latest_snap}  >/dev/null 2>&1
-
+      debug creating BASE snapshot for: $pool/$image with name ${BASEMARKER}-${image}-${SUFFIX}
+      rbd -p $pool snap create --snap ${BASEMARKER}-${image}-${SUFFIX} ${image}
     done
   done
+
+}
+function create_today_snapshots {
+
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+      debug creating DAILY snapshot for: $pool/$image with name ${MARKER}-${image}-${SUFFIX}
+      rbd -p $pool snap create --snap ${MARKER}-${image}-${SUFFIX} ${image}
+    done
+  done
+
+}
+
+function delete_old_snapshots {
+
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+      debug deleting snapshots for: $pool/$image
+      snapshot_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | egrep "$MARKER" | wc -l`
+      if [ "$snapshot_count" -gt "$SNAPSHOTS" ]; then 
+        (( to_del = (( $snapshot_count - $SNAPSHOTS)) ))
+        for((i=0;i<$to_del;i++)); do
+          oldest_snapshot=`rbd snap ls $pool/$image | grep -v "SNAPID" | egrep "$MARKER" |sort -n | head -n 1 | awk '{print $2}'`
+          debug deleteing $pool/$image@$oldest_snapshot
+          rbd snap rm $pool/$image@$oldest_snapshot
+          if [ "$?" -gt "0" ] ; then
+            debug fatal error can not delete snapshot $oldest_snapshot , it might be protected
+          fi
+        done
+      else
+        debug Nothing to delete
+      fi
+    done
+  done
+
+}
+
+function export_base_images {
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+      debug exporting BASE image $pool/$image $DEST/$pool/$image
+      rbd export $pool/$image $DEST/$pool/$image/$image >/dev/null 2>&1
+    done
+  done
+
+}
+
+function export_diff_from_base_to_now {
+  for pool in ${POOLS[@]}; do
+    images=$(rbd -p $pool ls 2>/dev/null)
+    for image in $(echo $images); do
+      latest_base=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 |awk '{print $2}'`
+      latest_snap=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $MARKER | sort -n | head -n 1 |awk '{print $2}'`
+      debug export-diff --from-snap $latest_base $pool/$image@$latest_snap $DEST/$pool/$image/${latest_base}-to-${latest_snap}
+      rbd export-diff --from-snap $latest_base $pool/$image@$latest_snap $DEST/$pool/$image/${latest_base}-to-${latest_snap}  >/dev/null 2>&1
+    done
+  done
+
 }
 
 function update_index {
 
-  LAST_UPDATE=`tail -2 $INDEX | head -1`
-  echo $SUFFIX >> $INDEX
+  if [ $CREATE_BASE == true ] ; then
+    echo $SUFFIX "latest-base-image-here" >> $INDEX
+  else
+    echo $SUFFIX >> $INDEX
+  fi
 
 }
 

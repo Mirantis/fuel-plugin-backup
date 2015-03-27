@@ -2,10 +2,16 @@
 #Configuratino file
 
 #Global Variables
-declare SUFFIX=$(date +'%Y-%m-%d_%H-%M')
-declare BACKUP="/backup"
-declare INDEX="/backup/index.db"
-declare DEST="$BACKUP/rbd-meta-backup-$SUFFIX"
+MARKER="capone"
+BASEMARKER="base"
+SUFFIX=$(date +'%Y-%m-%d_%H-%M')
+BACKUP="/backup"
+INDEX="/backup/index.db"
+DEST="$BACKUP/backup-$SUFFIX"
+SNAPSHOTS="3"
+COPIES="10"
+
+
 
 #rbd pools to backup
 declare -a POOLS=( images volumes compute )

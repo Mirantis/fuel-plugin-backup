@@ -27,9 +27,12 @@ if [ "$1" == "backup" ]; then
 elif [ "$1" == "purge" ]; then
   shift 1
   purge
-elif [ "$1" == "restore" ]; then
+elif [ "$1" == "list" ]; then
   shift 1
-  restore
+  list
+elif [ "$1" == "del" ]; then
+  shift 1
+  delete_old_snapshots
 else
   echo "Invalid selection."
   show_usage
