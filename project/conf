@@ -2,20 +2,21 @@
 #Configuratino file
 
 #Global Variables
-MARKER="capone"
+MARKER="daily"
 BASEMARKER="base"
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
 BACKUP="/backup"
 INDEX="/backup/index.db"
 DEST="$BACKUP/backup-$SUFFIX"
-SNAPSHOTS="3"
-COPIES="10"
+SNAPSHOTS="2"
+COPIES="5"
 LCK_FILE=`basename $0`.lck
 
 #rbd pools to backup
 declare -a POOLS=( images volumes compute )
 
 #Binaries
+RBD="/usr/bin/rbd"
 ASTUTE_YAML="/etc/fuel/astute.yaml"
 GSC="$PYT /usr/bin/get_service_credentials.py"
 GIT="/usr/bin/git"

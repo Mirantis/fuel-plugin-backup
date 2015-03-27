@@ -30,6 +30,9 @@ function parse_options {
         --nodebug)    DEBUG=false
                       shift
                       ;;
+        --folder)     shift
+                      SOURCE=$2
+                      ;;
         --)           shift
                       nonopts+=("$@")
                       return
@@ -52,25 +55,39 @@ function parse_options {
 
 function backup {
 
-  pid
+  pid                                      ## Create lock-file
 
   list                                     ## Just information
   make_dir_if_not_exist                    ## Create Skeleton
   save_metadata                            ## Metadata, wiil use it to understand the image size
 
-  create_not_create
-
+  create_not_create                        ## If we have new images, let's create new base-snapshots
   if [ $CREATE_BASE == true ] ; then
-    create_base_snapshots                  ## Every day snapshot to make DIFF from base to it
+    create_snapshots $BASEMARKER           ## Every day snapshot to make DIFF from base to it
     export_base_images                     ## Need to create if there is no Base images or other cases
   else
-    create_today_snapshots                 ## Every day snapshot to make DIFF from base to it
+    create_snapshots $MARKER               ## Every day snapshot to make DIFF from base to it
     export_diff_from_base_to_now
   fi
-    delete_old_snapshots                   ## If snapshot count more
-    update_index                           ## User information about where base image is stored
+  delete_old_snapshots $MARKER             ## If snapshot count more
+  delete_old_snapshots $BASEMARKER         ## If snapshot count more
+  update_index                             ## User information about where base image is stored
 
 }
+
+function restore {
+
+  find_nearest_base $SOURCE                 ## Check the path and find the proper base image
+  pid
+  check_the_path
+  find_nearest_base
+
+#  list                                      ## Just information
+#  import_base
+#  import_diffs
+#  update_index                             ## User information about where base image is stored
+}
+
 
 function pid {
   # Am I Running
@@ -78,12 +95,50 @@ function pid {
     MYPID=`head -n 1 $LCK_FILE`
     while [ -n "`ps -p ${MYPID} | grep ${MYPID}`" ]
     do
-          echo `basename $0` is already running [$MYPID].
-          exit
-    done 
+      echo `basename $0` is already running [$MYPID].
+      exit
+    done
   fi
   echo $$ > $LCK_FILE
 }
+
+function import_base {
+
+  rbd import --image-format 2 /tmp/img mypool/myimage2
+
+}
+
+function import_diffs {
+
+  rbd import-diff /path/to/diff backup_image
+
+}
+
+function find_nearest_base {
+
+  rbd import-diff /path/to/diff backup_image
+
+}
+
+function check_the_path {
+
+  rc=`echo "$1" | grep $BACKUP &> /dev/null; echo $?`
+  if [[ ! -e "$1" ]]; then
+    ${RED}
+    echo "Check the path, there is no such folder - $1"; 
+    ${RESET}
+    exit 1
+  elif [[ "$rc" > "0" ]]; then
+    ${RED}
+    echo "Check the path, should be like $DEST"; 
+    ${RESET}
+    exit 1
+  fi
+  restore_from=`echo "$1" | sed -e 's#^'$BACKUP'/backup-##' | sed -r 's#/##'`
+  debug Starting restoration from: $restore_from
+
+}
+
 
 function create_not_create {
 
@@ -167,31 +222,20 @@ function save_metadata {
     rados -p $pool get rbd_directory $DEST/$pool/rbd_directory
 
     for image in $(echo $images); do
-        rbd -p $pool info $image > $DEST/$pool/$image.rbd
+        rbd -p $pool info $image > $DEST/$pool/$image.info
     done
 
   done
 
 }
 
-function create_base_snapshots {
+function create_snapshots {
 
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-      debug creating BASE snapshot for: $pool/$image with name ${BASEMARKER}-${image}-${SUFFIX}
-      rbd -p $pool snap create --snap ${BASEMARKER}-${image}-${SUFFIX} ${image}
-    done
-  done
-
-}
-function create_today_snapshots {
-
-  for pool in ${POOLS[@]}; do
-    images=$(rbd -p $pool ls 2>/dev/null)
-    for image in $(echo $images); do
-      debug creating DAILY snapshot for: $pool/$image with name ${MARKER}-${image}-${SUFFIX}
-      rbd -p $pool snap create --snap ${MARKER}-${image}-${SUFFIX} ${image}
+      debug creating $1 snapshot for: $pool/$image with name $1-${image}-${SUFFIX}
+      rbd -p $pool snap create --snap $1-${image}-${SUFFIX} ${image}
     done
   done
 
@@ -202,12 +246,12 @@ function delete_old_snapshots {
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-      debug deleting snapshots for: $pool/$image
-      snapshot_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | egrep "$MARKER" | wc -l`
+      snapshot_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | egrep "$1" | wc -l`
       if [ "$snapshot_count" -gt "$SNAPSHOTS" ]; then 
+        debug deleting $1 snapshots for: $pool/$image
         (( to_del = (( $snapshot_count - $SNAPSHOTS)) ))
         for((i=0;i<$to_del;i++)); do
-          oldest_snapshot=`rbd snap ls $pool/$image | grep -v "SNAPID" | egrep "$MARKER" |sort -n | head -n 1 | awk '{print $2}'`
+          oldest_snapshot=`rbd snap ls $pool/$image | grep -v "SNAPID" | egrep "$1" |sort -n | head -n 1 | awk '{print $2}'`
           debug deleteing $pool/$image@$oldest_snapshot
           rbd snap rm $pool/$image@$oldest_snapshot
           if [ "$?" -gt "0" ] ; then
@@ -215,7 +259,7 @@ function delete_old_snapshots {
           fi
         done
       else
-        debug Nothing to delete
+        continue
       fi
     done
   done
@@ -253,7 +297,6 @@ function update_index {
   else
     echo $SUFFIX >> $INDEX
   fi
-
 }
 
 
