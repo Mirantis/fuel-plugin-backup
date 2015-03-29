@@ -6,9 +6,23 @@ MARKER="daily"
 BASEMARKER="base"
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
 BACKUP="/backup"
-INDEX="/backup/index.db"
-DEST="$BACKUP/backup-$SUFFIX"
-SNAPSHOTS="2"
+
+#
+#[-] today
+# [-] base
+#  [-] pool
+#   [-] imagename.img
+# [-] daily
+#  [-] pool
+#   [-] imagename.diff
+#[+] yesterday
+#[+] twodaysago
+
+
+BASEDEST="$BACKUP/$BASEMARKER"
+DEST="$BACKUP/$SUFFIX/$MARKER"
+
+SNAPSHOTS="5"
 COPIES="5"
 LCK_FILE=`basename $0`.lck
 
