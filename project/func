@@ -223,8 +223,8 @@ function export_base_images {
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-      if [ ! -e "$BASEDEST/$pool/$image" ] ; then 
-        debug exporting BASE image $pool/$image $BASEDEST/$pool/$image
+      if [ ! -e "$BASEDEST/$pool/${image}.img" ] ; then 
+        debug exporting BASE image $pool/$image $BASEDEST/$pool/$image.img
         rbd export $pool/$image $BASEDEST/$pool/${image}.img >/dev/null 2>&1
       fi 
     done
@@ -238,7 +238,7 @@ function export_diff_from_base_to_now {
     for image in $(echo $images); do
       latest_base=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 |awk '{print $2}'`
       if [ ! -e "$DEST/$pool/${image}.diff" ] ; then 
-        debug export-diff $pool/$image --from-snap $latest_base $DEST/$pool/$image
+        debug export-diff $pool/$image --from-snap $latest_base $DEST/$pool/$image.diff
         rbd export-diff $pool/$image --from-snap $latest_base $DEST/$pool/${image}.diff >/dev/null 2>&1
       fi
     done
