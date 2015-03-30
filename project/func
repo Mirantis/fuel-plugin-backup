@@ -56,30 +56,23 @@ function parse_options {
 function backup {
 
   pid                                      ## Create lock-file
-
   list                                     ## Just information
   make_dir_if_not_exist                    ## Create Skeleton
-
   save_metadata                            ## Metadata, wiil use it to understand the image size
-  create_snapshots $BASEMARKER           ## Every day snapshot to make DIFF from base to it
-
-  export_base_images                     ## Need to create if there is no Base images or other cases
+  create_snapshots $BASEMARKER             ## Every day snapshot to make DIFF from base to it
+  export_base_images                       ## Need to create if there is no Base images or other cases
   export_diff_from_base_to_now
-
   delete_old_snapshots $BASEMARKER         ## If snapshot count more
 
 }
 
 function restore {
 
-  find_nearest_base $SOURCE                 ## Check the path and find the proper base image
   pid
   check_the_path $SOURCE
+#  import_base  $SOURCE
+  import_diffs $SOURCE
 
-#  list                                      ## Just information
-#  import_base
-#  import_diffs
-#  update_index                             ## User information about where base image is stored
 }
 
 
@@ -98,14 +91,27 @@ function pid {
 
 function import_base {
 
-  rbd import --image-format 2 /tmp/img mypool/myimage2
+  for pool in ${POOLS[@]}; do
+    declare -a img=(`ls $BASEDEST/$pool/*.img | sed 's#.img$##'`)
+    for i in ${img[@]} ; do
+      debug import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
+      rbd import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
+    done
+  done
 
 }
 
 function import_diffs {
 
-  rbd import-diff /path/to/diff backup_image
-  rbd diff --from-snap snap1 pool/image@snap2 --format plain
+  for pool in ${POOLS[@]}; do
+    declare -a diffs=(`ls $1$MARKER/$pool/*.diff | sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
+    for i in ${diffs[@]} ; do
+      debug import-diff ${i}.diff `echo $i | sed 's#'$1'/daily/##'`
+#      rbd import-diff ${i}.diff `echo $i | `
+    done
+  done
+
+
 
 }
 
