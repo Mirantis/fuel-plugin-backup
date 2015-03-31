@@ -143,12 +143,15 @@ function make_dir_if_not_exist {
     debug Destination folder already exists
   else
     debug "creating folder $DEST"
-  fi
+    mkdir -p $DEST
+    mkdir -p $BASEDEST
     for pool in ${POOLS[@]}; do
-      debug creating $DEST/$pool
-      mkdir -p $DEST/$pool
-      mkdir -p $BASEDEST/$pool
+      debug creating ${DEST}/${pool}
+      mkdir -p ${DEST}/${pool}
+      debug creating ${BASEDEST}/${pool}
+      mkdir -p ${BASEDEST}/${pool}
     done
+  fi
 
 }
 
@@ -160,7 +163,7 @@ function list {
 
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-      debug list of snapshots for_image $pool/$image
+      debug list of snapshots for_image ${pool}/${image}
       rbd snap ls ${pool}/${image}
     done
   done
@@ -189,11 +192,11 @@ function save_metadata {
     if [ "$numimages" -eq 0 ]; then
         continue;
     fi
-    echo $images > $DEST/$pool/images
-    rados -p $pool get rbd_directory $DEST/$pool/rbd_directory
+    echo $images > ${DEST}/${pool}/images
+    rados -p $pool get rbd_directory ${DEST}/${pool}/rbd_directory
 
     for image in $(echo $images); do
-        rbd -p $pool info $image > $DEST/$pool/$image.info
+        rbd -p $pool info $image > ${DEST}/${pool}/${image}.info
     done
 
   done
@@ -218,14 +221,16 @@ function create_snapshots {
 
 function delete_old_snapshots {
 
-
+  to_del="0"
   folder_count=`ls /backup | grep -v $1 | sort -n | wc -l`
-  (( to_del = (( $folder_count - $SNAPSHOTS)) ))
-  declare -a old_folders=(`ls /backup | grep -v base | sort -r | tail -n $to_del`)
-  for i in ${old_folders[@]} ; do
-    debug deleting old data from  /backup/$i
-    rm -rf /backup/$i
-  done
+  if [ $folder_count -gt $COPIES ]; then
+    (( to_del = (( $folder_count - $COPIES)) ))
+    declare -a old_folders=(`ls /backup | grep -v base | sort -r | tail -n $to_del`)
+    for i in ${old_folders[@]} ; do
+      debug deleting old data from  /backup/$i
+      rm -rf /backup/$i
+    done
+  fi
 }
 
 function export_base_images {
