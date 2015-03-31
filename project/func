@@ -73,7 +73,7 @@ function restore {
 
   pid
   check_the_path $SOURCE
-#  import_base  $SOURCE
+  import_base  $SOURCE
   import_diffs $SOURCE
 
 }
@@ -106,11 +106,13 @@ function import_base {
 
 function import_diffs {
 
+  path="$1"
   for pool in ${POOLS[@]}; do
-    declare -a diffs=(`ls $1$MARKER/$pool/*.diff | sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
+    declare -a diffs=(`ls $1/$MARKER/$pool/*.diff | sed 's,//,/,g'| sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
     for i in ${diffs[@]} ; do
-      debug import-diff ${i}.diff `echo $i | sed -e 's/^[0-9,a-z]*\/[0-9,a-z]*\///'`
-#      rbd import-diff ${i}.diff `echo $i | `
+      prepare_path=`echo $i | sed 's,//,/,g' | sed 's#'$path'##g' | sed 's#'$MARKER'/##g'`
+      debug import-diff ${i}.diff $prepare_path
+      rbd import-diff ${i}.diff $prepare_path
     done
   done
 
@@ -122,9 +124,14 @@ function check_the_path {
 
   debug $1
   rc=`echo "$1" | grep $BACKUP &> /dev/null; echo $?`
-  if [[ ! -e "$1" ]]; then
+  if [ "$1" == "" ]; then 
+    ${YELLOW}
+    echo "Please provide --folder option"
+    ${RESET}
+    exit 1
+  elif [[ ! -e "$1" ]]; then
     ${RED}
-    echo "Check the path, there is no such folder - $1"; 
+    echo "Check the path, there should be --folder /backup/$SUFFIX option"; 
     ${RESET}
     exit 1
   elif [[ "$rc" > "0" ]]; then
