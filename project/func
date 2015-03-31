@@ -10,13 +10,16 @@ function show_usage {
     echo "Available commands: (Note: work in progress)"
     echo "help: show this message"
     echo "Options:"
-    ${GREEN}
-    echo "  --debug    : to show some debug messages"
-    ${RESET}
+    echo "  --debug    : to show some debug messages (by default)"
     echo "Commands  :"
-    echo "  boot: to boot up node"
+    echo "  backup : to backup ceph data"
+    echo "  restore: to restore backupped ceph data"
+    echo "  list   : list all objects in rbd (developemnent option)"
+    echo "  purge  : to remove all snapshots of all images (developemnent option)"
     echo
     echo "Examples:"
+    echo "  $0 backup"
+    echo "  $0 restore --folder /backup/$SUFFIX"
 
 }
 
@@ -27,17 +30,17 @@ function parse_options {
         -d|--debug)   DEBUG=true
                       shift
                       ;;
+        --folder)     shift 2
+                      SOURCE=$1
+                      ;;
         --nodebug)    DEBUG=false
                       shift
-                      ;;
-        --folder)     shift
-                      SOURCE=$2
                       ;;
         --)           shift
                       nonopts+=("$@")
                       return
                       ;;
-        help|backup|restore|purge|list|del)
+        help|backup|purge|list)
                       nonopts+=("$@")
                       return
                       ;;
@@ -106,7 +109,7 @@ function import_diffs {
   for pool in ${POOLS[@]}; do
     declare -a diffs=(`ls $1$MARKER/$pool/*.diff | sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
     for i in ${diffs[@]} ; do
-      debug import-diff ${i}.diff `echo $i | sed 's#'$1'/daily/##'`
+      debug import-diff ${i}.diff `echo $i | sed -e 's/^[0-9,a-z]*\/[0-9,a-z]*\///'`
 #      rbd import-diff ${i}.diff `echo $i | `
     done
   done
@@ -117,6 +120,7 @@ function import_diffs {
 
 function check_the_path {
 
+  debug $1
   rc=`echo "$1" | grep $BACKUP &> /dev/null; echo $?`
   if [[ ! -e "$1" ]]; then
     ${RED}

@@ -9,6 +9,7 @@ declare -a nonopts
 parse_options "$@"
 set -- "${nonopts[@]}"
 
+
 if [ -z "$1" ] || [ "$1" = "help" ]; then
   ${GREEN}
   echo "Please specify a command."
@@ -26,16 +27,13 @@ if [ "$1" == "backup" ]; then
   backup
 elif [ "$1" == "restore" ]; then
   shift 1
-  restore
+  restore $@
 elif [ "$1" == "purge" ]; then
   shift 1
   purge
 elif [ "$1" == "list" ]; then
   shift 1
   list
-elif [ "$1" == "del" ]; then
-  shift 1
-  delete_old_snapshots
 else
   echo "Invalid selection."
   show_usage
