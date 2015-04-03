@@ -62,7 +62,7 @@ function backup {
   list                                     ## Just information
   make_dir_if_not_exist                    ## Create Skeleton
   save_metadata                            ## Metadata, wiil use it to understand the image size
-  create_snapshots $BASEMARKER             ## Every day snapshot to make DIFF from base to it
+  create_snapshots $BASEMARKER $SUFFIX     ## Every day snapshot to make DIFF from base to it
   export_base_images                       ## Need to create if there is no Base images or other cases
   export_diff_from_base_to_now
   delete_old_snapshots $BASEMARKER         ## If snapshot count more
@@ -74,6 +74,8 @@ function restore {
   pid
   check_the_path $SOURCE
   import_base  $SOURCE
+  NEWSUFFIX=`echo $SOURCE | sed 's#/backup/##' | sed 's#/##'`
+  create_snapshots $BASEMARKER $NEWSUFFIX
   import_diffs $SOURCE
 
 }
@@ -85,7 +87,7 @@ function pid {
     MYPID=`head -n 1 $LCK_FILE`
     while [ -n "`ps -p ${MYPID} | grep ${MYPID}`" ]
     do
-      echo `basename $0` is already running [$MYPID].
+      echo `basename $0` is already running [$MYPID]
       exit
     done
   fi
@@ -217,8 +219,8 @@ function create_snapshots {
     for image in $(echo $images); do
       base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep base | sort -n | head -n 1 | awk '{print $2}' | wc -l`
       if [ "$base_images_count" -eq "0" ] ; then
-        debug creating $1 snapshot for: $pool/$image with name $1-${image}-${SUFFIX}
-        rbd -p $pool snap create --snap $1-${image}-${SUFFIX} ${image}
+        debug creating $1 snapshot for: $pool/$image with name $1-${image}-$2
+        rbd -p $pool snap create --snap $1-${image}-$2 ${image}
       fi
 
     done
