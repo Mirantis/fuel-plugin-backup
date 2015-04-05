@@ -74,7 +74,7 @@ function restore {
   pid
   check_the_path $SOURCE
   import_base  $SOURCE
-  NEWSUFFIX=`echo $SOURCE | sed 's#/backup/##' | sed 's#/##'`
+  NEWSUFFIX=`echo $SOURCE | sed 's#/$##' | awk -F "/" '{print $NF}'`
   create_snapshots $BASEMARKER $NEWSUFFIX
   import_diffs $SOURCE
 
