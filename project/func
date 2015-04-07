@@ -15,7 +15,7 @@ function show_usage {
     echo "  backup : to backup ceph data"
     echo "  restore: to restore backupped ceph data"
     echo "  list   : list all objects in rbd (developemnent option)"
-    echo "  purge  : to remove all snapshots of all images (developemnent option)"
+    echo "  purge  : to remove all snapshots of all images (development option)"
     echo
     echo "Examples:"
     echo "  $0 backup"
