@@ -3,7 +3,7 @@
 
 #Global Variables
 MARKER="daily"
-BASEMARKER="base"
+BASEMARKER="backup"
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
 BACKUP="/backup"
 

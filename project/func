@@ -65,7 +65,11 @@ function backup {
   create_snapshots $BASEMARKER $SUFFIX     ## Every day snapshot to make DIFF from base to it
   export_base_images                       ## Need to create if there is no Base images or other cases
   export_diff_from_base_to_now
-  delete_old_snapshots $BASEMARKER         ## If snapshot count more
+
+  get_removed
+  remove_from_disk
+  delete_old_snapshots $BASEMARKER         ## If snapshot count more than needed
+
 
 }
 
@@ -212,6 +216,50 @@ function save_metadata {
 
 }
 
+function get_removed {
+
+declare -a removed_images
+
+  for pool in ${POOLS[@]}; do
+    if [ "$pool" == "compute" ]; then
+      debug gathering fresh deleted images from OpenStack database NOVA
+      debug `mysql -N -s -r -e "select uuid from instances where vm_state='deleted'" nova`
+      debug `mysql -N -s -r -e "select uuid from s3_images where deleted='1'" nova`
+      removed_images+=`mysql -N -s -r -e "select uuid from instances where vm_state='deleted'" nova`
+      removed_images+=`mysql -N -s -r -e "select uuid from s3_images where deleted='1'" nova | tr '\n' ' '`
+
+    elif [ "$pool" == "volumes" ]; then
+      debug gathering fresh deleted images from OpenStack database CINDER
+      debug `mysql -N -s -r -e "select id from volumes where status='deleted'" cinder`
+      removed_images+=`mysql -N -s -r -e "select id from volumes where status='deleted'" cinder | tr '\n' ' '`
+      
+    elif [ "$pool" == "images" ]; then
+      debug gathering fresh deleted images from OpenStack database GLANCE
+      debug `mysql -N -s -r -e "select id from images where status='deleted'" glance`
+      removed_images+=`mysql -N -s -r -e "select id from images where status='deleted'" glance | tr '\n' ' '`
+
+    else
+      debug it seems that we use non openstack environment
+    fi
+  done
+${GREEN}
+echo "${removed_images[@]}"
+${RESET}
+}
+
+function remove_from_disk {
+
+  for img_name in ${removed_images[@]}; do
+    if [ "`find $BACKUP -name ${img_name}.diff | wc -l`" -eq "0" ] ; then
+      debug delete $img_name
+      #delete base_snap_from_disk
+      #delete base_snap_from_ceph
+      #delete image_from_ceph
+    fi
+
+  done
+}
+
 function create_snapshots {
 
   for pool in ${POOLS[@]}; do
@@ -219,8 +267,8 @@ function create_snapshots {
     for image in $(echo $images); do
       base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep base | sort -n | head -n 1 | awk '{print $2}' | wc -l`
       if [ "$base_images_count" -eq "0" ] ; then
-        debug creating $1 snapshot for: $pool/$image with name $1-${image}-$2
-        rbd -p $pool snap create --snap $1-${image}-$2 ${image}
+        debug creating $1 snapshot for: $pool/$image with name $1.${image}.snap.$2
+        rbd -p $pool snap create --snap $1.${image}.snap.$2 ${image}
       fi
 
     done
@@ -231,13 +279,13 @@ function create_snapshots {
 function delete_old_snapshots {
 
   to_del="0"
-  folder_count=`ls /backup | grep -v $1 | sort -n | wc -l`
+  folder_count=`ls $BACKUP | grep -v $1 | sort -n | wc -l`
   if [ $folder_count -gt $COPIES ]; then
     (( to_del = (( $folder_count - $COPIES)) ))
-    declare -a old_folders=(`ls /backup | grep -v base | sort -r | tail -n $to_del`)
+    declare -a old_folders=(`ls $BACKUP | grep -v $1 | sort -r | tail -n $to_del`)
     for i in ${old_folders[@]} ; do
-      debug deleting old data from  /backup/$i
-      rm -rf /backup/$i
+      debug deleting old data from  $BACKUP/$i
+      rm -rf $BACKUP/$i
     done
   fi
 }
