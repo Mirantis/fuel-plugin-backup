@@ -1,8 +1,8 @@
 #!/bin/bash
 ## Initial
 
-. project/func
-. project/conf
+. ceph_backup/functions
+. ceph_backup/config
 
 #Sets var nonopts
 declare -a nonopts

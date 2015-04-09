@@ -7,7 +7,7 @@ BASEMARKER="backup"  # do not change it, in case of backup cinder volumes. hardc
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
 BACKUP="/backup"
 ENVID=4
-CONTR=`fuel nodes --env $ENVID | grep controller | head -1 | awk  {'print $5'}`
+CONTR=`fuel node --env $ENVID | grep controller | grep True | head -1 | awk  {'print $5'}`
 
 BASEDEST="$BACKUP/$BASEMARKER"
 DEST="$BACKUP/$SUFFIX/$MARKER"

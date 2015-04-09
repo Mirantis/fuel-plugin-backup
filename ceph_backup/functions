@@ -254,17 +254,18 @@ declare -a removed_images
         images=$(rbd -p $pool ls 2>/dev/null)
         for image in $(echo $images); do
           if [[ "$image" =~ "$img_name" ]] ; then
+            #if snapshot is protected, so better to unprotect it before deletion
             #for sn in `rbd snap ls ${pool}/${image} | grep -v SNAPID | awk '{print $2}'` ; do
             #  rbd snap unprotect $pool/$image@$sn &>/dev/null
             #done
-            #delete base_snap_from_ceph
+            debug We have found, that image $img_name web deleted from OpenStack, so we have to delete snapshots and image from ceph
+            debug snap purge ${pool}/${image}
             rbd snap purge ${pool}/${image}
-            #delete image_from_ceph
+            debug rm ${pool}/${image}
             rbd rm ${pool}/${image}
           fi
         done
       done
-#    fi
  done
 
 }
