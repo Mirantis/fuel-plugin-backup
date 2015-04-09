@@ -62,11 +62,11 @@ function backup {
   list                                     ## Just information
   make_dir_if_not_exist                    ## Create Skeleton
   save_metadata                            ## Metadata, wiil use it to understand the image size
+  remove_deleted
   create_snapshots $BASEMARKER $SUFFIX     ## Every day snapshot to make DIFF from base to it
   export_base_images                       ## Need to create if there is no Base images or other cases
   export_diff_from_base_to_now
-  delete_old_copies $BASEMARKER         ## If snapshot count more than needed
-  get_removed
+  delete_old_copies $BASEMARKER            ## If snapshot count more than needed
 }
 
 function restore {
@@ -213,7 +213,7 @@ function save_metadata {
 
 }
 
-function get_removed {
+function remove_deleted {
 
 declare -a removed_images
 
@@ -239,15 +239,16 @@ declare -a removed_images
       debug it seems that we use non openstack environment
     fi
   done
-${GREEN}
-echo "${removed_images[@]}"
-${RESET}
+
+  debug images that marked as removed in mysql: "${removed_images[@]}"
 
   for img_name in ${removed_images[@]}; do
-#    if [ "`find $BACKUP -name ${img_name}.diff | wc -l`" -eq "0" ] ; then
-#      debug delete $img_name
-#     First of all we have to stop creation of diffs, we do not need them at all, this will be the case when we can delete base images
-#     We have to delete images only from images or compute, cinder/volumes make this work for us.
+    #delete base_snap_from_disk
+    count_of_diffs=`find $BACKUP -name *${img_name}*.diff | wc -l`
+    echo $conut_of_diffs
+    if [ "$count_of_diffs" -eq 0 ] ; then
+      find $BASEDEST -type f -name "*${img_name}*.img" -exec rm -f {} \;
+    fi
 
       for pool in ${POOLS[@]}; do
         images=$(rbd -p $pool ls 2>/dev/null)
@@ -256,12 +257,10 @@ ${RESET}
             #for sn in `rbd snap ls ${pool}/${image} | grep -v SNAPID | awk '{print $2}'` ; do
             #  rbd snap unprotect $pool/$image@$sn &>/dev/null
             #done
-
             #delete base_snap_from_ceph
             rbd snap purge ${pool}/${image}
             #delete image_from_ceph
             rbd rm ${pool}/${image}
-            #delete base_snap_from_disk
           fi
         done
       done
