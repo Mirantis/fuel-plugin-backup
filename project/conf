@@ -3,30 +3,24 @@
 
 #Global Variables
 MARKER="daily"
-BASEMARKER="backup"
+BASEMARKER="backup"  # do not change it, in case of backup cinder volumes. hardcoded in cinder : https://github.com/openstack/cinder/blob/stable/juno/cinder/backup/drivers/ceph.py#L733
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
 BACKUP="/backup"
-
-#
-#[-] today
-# [-] base
-#  [-] pool
-#   [-] imagename.img
-# [-] daily
-#  [-] pool
-#   [-] imagename.diff
-#[+] yesterday
-#[+] twodaysago
-
+ENVID=4
+CONTR=`fuel nodes --env $ENVID | grep controller | head -1 | awk  {'print $5'}`
 
 BASEDEST="$BACKUP/$BASEMARKER"
 DEST="$BACKUP/$SUFFIX/$MARKER"
-
+#ROOTPWD=`dockerctl shell postgres sudo -u postgres psql -n nailgun -t -c "select generated from attributes where cluster_id=$ENVID" | python -c 'import sys, json; print json.load(sys.stdin)["mysql"]["root_password"]'`
 COPIES="5"
 LCK_FILE=`basename $0`.lck
-
 #rbd pools to backup
-declare -a POOLS=( images volumes compute )
+declare -a POOLS=( images volumes compute ) #there only 3 of them: volumes, compute, images
+
+
+
+
+
 
 #Binaries
 RBD="/usr/bin/rbd"

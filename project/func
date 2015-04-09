@@ -65,12 +65,8 @@ function backup {
   create_snapshots $BASEMARKER $SUFFIX     ## Every day snapshot to make DIFF from base to it
   export_base_images                       ## Need to create if there is no Base images or other cases
   export_diff_from_base_to_now
-
+  delete_old_copies $BASEMARKER         ## If snapshot count more than needed
   get_removed
-  remove_from_disk
-  delete_old_snapshots $BASEMARKER         ## If snapshot count more than needed
-
-
 }
 
 function restore {
@@ -187,10 +183,11 @@ function purge {
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-
       rbd snap ls ${pool}/${image}
+      #for sn in `rbd snap ls ${pool}/${image} | grep -v SNAPID | awk '{print $2}'` ; do
+      #    rbd snap unprotect $pool/$image@$sn &>/dev/null
+      #done
       rbd snap purge ${pool}/${image}
-
     done
   done
 }
@@ -223,20 +220,20 @@ declare -a removed_images
   for pool in ${POOLS[@]}; do
     if [ "$pool" == "compute" ]; then
       debug gathering fresh deleted images from OpenStack database NOVA
-      debug `mysql -N -s -r -e "select uuid from instances where vm_state='deleted'" nova`
-      debug `mysql -N -s -r -e "select uuid from s3_images where deleted='1'" nova`
-      removed_images+=`mysql -N -s -r -e "select uuid from instances where vm_state='deleted'" nova`
-      removed_images+=`mysql -N -s -r -e "select uuid from s3_images where deleted='1'" nova | tr '\n' ' '`
+      debug `ssh $CONTR "mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova"`
+      debug `ssh $CONTR "mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova"`
+      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova" | tr '\n' ' '`
+      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova" | tr '\n' ' '`
 
     elif [ "$pool" == "volumes" ]; then
       debug gathering fresh deleted images from OpenStack database CINDER
-      debug `mysql -N -s -r -e "select id from volumes where status='deleted'" cinder`
-      removed_images+=`mysql -N -s -r -e "select id from volumes where status='deleted'" cinder | tr '\n' ' '`
+      debug `ssh $CONTR "mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder"`
+      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder" | tr '\n' ' '`
       
     elif [ "$pool" == "images" ]; then
       debug gathering fresh deleted images from OpenStack database GLANCE
-      debug `mysql -N -s -r -e "select id from images where status='deleted'" glance`
-      removed_images+=`mysql -N -s -r -e "select id from images where status='deleted'" glance | tr '\n' ' '`
+      debug `ssh $CONTR "mysql -N -s -r -e \"select id from images where status='deleted'\" glance"`
+      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select id from images where status='deleted'\" glance" | tr '\n' ' '`
 
     else
       debug it seems that we use non openstack environment
@@ -245,19 +242,32 @@ declare -a removed_images
 ${GREEN}
 echo "${removed_images[@]}"
 ${RESET}
-}
-
-function remove_from_disk {
 
   for img_name in ${removed_images[@]}; do
-    if [ "`find $BACKUP -name ${img_name}.diff | wc -l`" -eq "0" ] ; then
-      debug delete $img_name
-      #delete base_snap_from_disk
-      #delete base_snap_from_ceph
-      #delete image_from_ceph
-    fi
+#    if [ "`find $BACKUP -name ${img_name}.diff | wc -l`" -eq "0" ] ; then
+#      debug delete $img_name
+#     First of all we have to stop creation of diffs, we do not need them at all, this will be the case when we can delete base images
+#     We have to delete images only from images or compute, cinder/volumes make this work for us.
 
-  done
+      for pool in ${POOLS[@]}; do
+        images=$(rbd -p $pool ls 2>/dev/null)
+        for image in $(echo $images); do
+          if [[ "$image" =~ "$img_name" ]] ; then
+            #for sn in `rbd snap ls ${pool}/${image} | grep -v SNAPID | awk '{print $2}'` ; do
+            #  rbd snap unprotect $pool/$image@$sn &>/dev/null
+            #done
+
+            #delete base_snap_from_ceph
+            rbd snap purge ${pool}/${image}
+            #delete image_from_ceph
+            rbd rm ${pool}/${image}
+            #delete base_snap_from_disk
+          fi
+        done
+      done
+#    fi
+ done
+
 }
 
 function create_snapshots {
@@ -265,7 +275,7 @@ function create_snapshots {
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-      base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep base | sort -n | head -n 1 | awk '{print $2}' | wc -l`
+      base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 | awk '{print $2}' | wc -l`
       if [ "$base_images_count" -eq "0" ] ; then
         debug creating $1 snapshot for: $pool/$image with name $1.${image}.snap.$2
         rbd -p $pool snap create --snap $1.${image}.snap.$2 ${image}
@@ -276,7 +286,7 @@ function create_snapshots {
 
 }
 
-function delete_old_snapshots {
+function delete_old_copies {
 
   to_del="0"
   folder_count=`ls $BACKUP | grep -v $1 | sort -n | wc -l`
