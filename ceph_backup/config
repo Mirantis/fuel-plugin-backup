@@ -12,7 +12,7 @@ CONTR=`fuel node --env $ENVID | grep controller | grep True | head -1 | awk  {'p
 BASEDEST="$BACKUP/$BASEMARKER"
 DEST="$BACKUP/$SUFFIX/$MARKER"
 #ROOTPWD=`dockerctl shell postgres sudo -u postgres psql -n nailgun -t -c "select generated from attributes where cluster_id=$ENVID" | python -c 'import sys, json; print json.load(sys.stdin)["mysql"]["root_password"]'`
-COPIES="5"
+COPIES="3"
 LCK_FILE=`basename $0`.lck
 #rbd pools to backup
 declare -a POOLS=( images volumes compute ) #there only 3 of them: volumes, compute, images

@@ -113,8 +113,8 @@ function import_diffs {
     declare -a diffs=(`ls $1/$MARKER/$pool/*.diff | sed 's,//,/,g'| sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
     for i in ${diffs[@]} ; do
       prepare_path=`echo $i | sed 's,//,/,g' | sed 's#'$path'##g' | sed 's#'$MARKER'/##g'`
-      debug import-diff $1/${MARKER}/${i}.diff $prepare_path
-      rbd import-diff $1/${MARKER}/${i}.diff $prepare_path
+      debug import-diff ${i}.diff $prepare_path
+      rbd import-diff ${i}.diff $prepare_path
     done
   done
 
