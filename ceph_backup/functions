@@ -97,11 +97,14 @@ function pid {
 function import_base {
 
   for pool in ${POOLS[@]}; do
-    declare -a img=(`ls $BASEDEST/$pool/*.img | sed 's#.img$##'`)
-    for i in ${img[@]} ; do
-      debug import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
-      rbd import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
-    done
+    declare -a img=("")
+    img+=(`ls $BASEDEST/$pool/*.img | sed 's#.img$##' &>/dev/null`)
+    if [ ! "$img" == "" ] ; then 
+      for i in ${img[@]} ; do
+        debug import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
+        rbd import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
+      done
+    fi
   done
 
 }
