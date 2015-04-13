@@ -95,14 +95,19 @@ function pid {
 }
 
 function import_base {
-
   for pool in ${POOLS[@]}; do
-    declare -a img=("")
-    img+=(`ls $BASEDEST/$pool/*.img | sed 's#.img$##' &>/dev/null`)
+#    echo $pool
+#    declare -a img=("")
+    declare -a img=(`ls $BASEDEST/$pool/*.img | sed 's#.img$##' 2>/dev/null`)
     if [ ! "$img" == "" ] ; then 
+#      echo $(ls $BASEDEST/$pool/*.img| sed 's#.img$##' 2>/dev/null)
       for i in ${img[@]} ; do
         debug import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
         rbd import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
+        if [ "$pool" == "images" ] ; then
+          rbd snap create `echo $i | sed 's#'$BASEDEST'/##'`@snap
+          rbd snap protect `echo $i | sed 's#'$BASEDEST'/##'`@snap
+        fi
       done
     fi
   done
@@ -113,15 +118,19 @@ function import_diffs {
 
   path="$1"
   for pool in ${POOLS[@]}; do
-    declare -a diffs=(`ls $1/$MARKER/$pool/*.diff | sed 's,//,/,g'| sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
-    for i in ${diffs[@]} ; do
-      prepare_path=`echo $i | sed 's,//,/,g' | sed 's#'$path'##g' | sed 's#'$MARKER'/##g'`
-      debug import-diff ${i}.diff $prepare_path
-      rbd import-diff ${i}.diff $prepare_path
-    done
+    if [ "$pool" == "compute" ] || [ "$pool" == "volumes" ] ; then
+      declare -a diffs=(`ls $1/$MARKER/$pool/*.diff | sed 's,//,/,g'| sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
+      for i in ${diffs[@]} ; do
+        prepare_path=`echo $i | sed 's,//,/,g' | sed 's#'$path'##g' | sed 's#'$MARKER'/##g'`
+#        debug import-diff ${i}.diff $prepare_path
+#        rbd import-diff ${i}.diff $prepare_path
+#        debug import-diff $1/${MARKER}/${i}.diff $prepare_path
+        debug import-diff $1/${MARKER}/${prepare_path}.diff $prepare_path
+        rbd import-diff $1/${MARKER}/${prepare_path}.diff $prepare_path
+#        rbd import-diff $1/${MARKER}/${i}.diff $prepare_path
+      done
+    fi
   done
-
-
 
 }
 
@@ -276,15 +285,16 @@ declare -a removed_images
 function create_snapshots {
 
   for pool in ${POOLS[@]}; do
-    images=$(rbd -p $pool ls 2>/dev/null)
-    for image in $(echo $images); do
-      base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 | awk '{print $2}' | wc -l`
-      if [ "$base_images_count" -eq "0" ] ; then
-        debug creating $1 snapshot for: $pool/$image with name $1.${image}.snap.$2
-        rbd -p $pool snap create --snap $1.${image}.snap.$2 ${image}
-      fi
-
-    done
+    if [ "$pool" == "compute" ] || [ "$pool" == "volumes" ] ; then
+      images=$(rbd -p $pool ls 2>/dev/null)
+      for image in $(echo $images); do
+        base_images_count=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 | awk '{print $2}' | wc -l`
+        if [ "$base_images_count" -eq "0" ] ; then
+          debug creating $1 snapshot for: $pool/$image with name $1.${image}.snap.$2
+          rbd -p $pool snap create --snap $1.${image}.snap.$2 ${image}
+        fi
+      done
+    fi
   done
 
 }
@@ -319,14 +329,16 @@ function export_base_images {
 
 function export_diff_from_base_to_now {
   for pool in ${POOLS[@]}; do
-    images=$(rbd -p $pool ls 2>/dev/null)
-    for image in $(echo $images); do
-      latest_base=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 |awk '{print $2}'`
-      if [ ! -e "$DEST/$pool/${image}.diff" ] ; then 
-        debug export-diff $pool/$image --from-snap $latest_base $DEST/$pool/$image.diff
-        rbd export-diff $pool/$image --from-snap $latest_base $DEST/$pool/${image}.diff >/dev/null 2>&1
-      fi
-    done
+    if [ "$pool" == "compute" ] || [ "$pool" == "volumes" ] ; then
+      images=$(rbd -p $pool ls 2>/dev/null)
+      for image in $(echo $images); do
+        latest_base=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 |awk '{print $2}'`
+        if [ ! -e "$DEST/$pool/${image}.diff" ] ; then 
+          debug export-diff $pool/$image --from-snap $latest_base $DEST/$pool/$image.diff
+          rbd export-diff $pool/$image --from-snap $latest_base $DEST/$pool/${image}.diff >/dev/null 2>&1
+        fi
+      done
+    fi
   done
 
 }
