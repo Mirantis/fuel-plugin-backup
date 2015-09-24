@@ -6,8 +6,11 @@ MARKER="daily"
 BASEMARKER="backup"  # do not change it, in case of backup cinder volumes. hardcoded in cinder : https://github.com/openstack/cinder/blob/stable/juno/cinder/backup/drivers/ceph.py#L733
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
 BACKUP="/backup"
-ENVID=4
-CONTR=`fuel node --env $ENVID | grep controller | grep True | head -1 | awk  {'print $5'}`
+ENVID=1
+#by hostname
+#CONTR=`fuel node --env $ENVID | grep controller | grep True | head -1 | awk  {'print $5'}`
+#by node-name
+CONTR=`fuel node --env 1 | grep controller | grep True | head -1 | awk  {'print "node-"$1'}`
 
 BASEDEST="$BACKUP/$BASEMARKER"
 DEST="$BACKUP/$SUFFIX/$MARKER"
@@ -15,12 +18,7 @@ DEST="$BACKUP/$SUFFIX/$MARKER"
 COPIES="3"
 LCK_FILE=`basename $0`.lck
 #rbd pools to backup
-declare -a POOLS=( images volumes compute ) #there only 3 of them: volumes, compute, images
-
-
-
-
-
+declare -a POOLS=(images volumes compute) #there only 3 of them: volumes, compute, images
 
 #Binaries
 RBD="/usr/bin/rbd"
