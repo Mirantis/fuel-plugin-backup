@@ -1,0 +1,7 @@
+attributes:
+  backup:
+    value: 'Backup'
+    label: 'Backup'
+    description: 'Allow Backup'
+    weight: 25
+    type: "text"

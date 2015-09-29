@@ -1,0 +1,27 @@
+# Plugin name
+name: backup
+# Human-readable name for your plugin
+title: Environment backup plugin
+# Plugin version
+version: '0.0.1'
+# Description
+description: Enable this plugin to choise backup options
+# Required fuel version
+fuel_version: ['6.1']
+# Specify license of your plugin
+licenses: ['Apache License Version 2.0']
+# Specify author or company name
+authors: ['Andrey Kirilochkin', 'akirilochkin@mirantis.com']
+# A link to the plugin's page
+homepage: 'https://github.com/andrei4ka/backup-plugin'
+groups: []
+
+# The plugin is compatible with releases in the list
+releases:
+  - os: ubuntu
+    version: 2014.2.2-6.1
+    mode: ['ha', 'multinode']
+    deployment_scripts_path: deployment_scripts/
+    repository_path: repositories/ubuntu
+# Version of plugin package
+package_version: '0.0.1'
