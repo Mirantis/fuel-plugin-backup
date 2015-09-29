@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+
+exec > /tmp/backup_databases.output
+exec 2>&1
+
+PATH="$PATH:/usr/local/bin"
+BACKUP_DIR=/var/backups
+#BACKUP_DIR=bhm1
+BACKUP_LOG=database-backup.log
+NUM_TO_KEEP=6
+
+innobackupex --defaults-extra-file=/root/.my.cnf $BACKUP_DIR > $BACKUP_LOG
+
+BACKUP_RETURN_CODE=$?
+
+if [[ $BACKUP_RETURN_CODE != 0 ]]; then
+  echo "There was an error backing up the databases. Return code was $BACKUP_RETURN_CODE. Please check log file."
+  exit $BACKUP_RETURN_CODE
+fi
+
+LATEST_BACKUP=`ls -t $BACKUP_DIR | head -1`
+
+# (alanmeadows) we also take a dump of every database we find in the innobackup
+# because we're paranoid, and innobackups have failed to restore in the past
+MYCNFOK=1
+if [ ! -e /root/.my.cnf ]; then
+   MYCNFOK=0
+   echo "The file /root/.my.cnf does not exist, and is required to run mysqldump"
+   if ! grep -q mysqldump /root/.my.cnf; then
+     MYCNFOK=0
+     echo "The file /root/.my.cnf does not contain credentials for mysqldump which is required"
+   fi;
+fi;
+if [ $MYCNFOK -eq 1 ]; then
+  OLD_PWD=$(pwd)
+  cd $BACKUP_DIR/$LATEST_BACKUP
+  for db in `find . -type d | sed "s/.\///" | grep -v -E '^.$'`;
+  do
+     mysqldump --defaults-extra-file=/root/.my.cnf --add-drop-table $db | gzip --fast > $db.gz
+  done
+  cd $OLD_PWD
+fi;
+
+echo "Archiving $LATEST_BACKUP..."
+cd $BACKUP_DIR
+
+echo "Clearing earliest backup directories..."
+NUM_LOCAL_BACKUPS=`ls -l $BACKUP_DIR | grep '^d' | wc -l`
+while [ $NUM_LOCAL_BACKUPS -gt $NUM_TO_KEEP ]
+do
+  EARLIEST_BACKUP=`ls -tr $BACKUP_DIR | head -1`
+  echo "Deleting $EARLIEST_BACKUP..."
+  rm -rf "$BACKUP_DIR/$EARLIEST_BACKUP"
+  NUM_LOCAL_BACKUPS=`ls -l $BACKUP_DIR | grep '^d' | wc -l`
+done
