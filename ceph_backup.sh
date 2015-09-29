@@ -25,7 +25,13 @@ command_seq=$COMMANDS_SEQUENCE
 if [ "$1" == "backup" ]; then
   shift 1
   backup
+elif [ "$1" == "mysqlbackup" ]; then
+  shift 1
+  mysqlbackup
 elif [ "$1" == "restore" ]; then
+  shift 1
+  restore $@
+elif [ "$1" == "mysqlrestore" ]; then
   shift 1
   restore $@
 elif [ "$1" == "purge" ]; then

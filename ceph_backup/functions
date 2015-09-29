@@ -11,14 +11,17 @@ function show_usage {
     echo "help: show this message"
     echo "Options:"
     echo "  --debug    : to show some debug messages (by default)"
-    echo "Commands  :"
-    echo "  backup : to backup ceph data"
-    echo "  restore: to restore backupped ceph data"
-    echo "  list   : list all objects in rbd (developemnent option)"
-    echo "  purge  : to remove all snapshots of all images (development option)"
+    echo "Commands:"
+    echo "  backup      : to backup ceph data"
+    echo "  mysqlbackup : to backup Openstack MySQL data"
+    echo "  restore     : to restore backupped ceph data"
+    echo "  mysqlrestore     : to restore backupped ceph data"
+    echo "  list        : list all objects in rbd (developemnent option)"
+    echo "  purge       : to remove all snapshots of all images (development option)"
     echo
     echo "Examples:"
     echo "  $0 backup"
+    echo "  $0 backupmysql"
     echo "  $0 restore --folder /backup/$SUFFIX"
 
 }
@@ -40,7 +43,7 @@ function parse_options {
                       nonopts+=("$@")
                       return
                       ;;
-        help|backup|purge|list)
+        help|mysqlbackup|backup|purge|list)
                       nonopts+=("$@")
                       return
                       ;;
@@ -55,6 +58,14 @@ function parse_options {
     done
 }
 
+
+function mysqlbackup {
+
+  pid                                      ## Create lock-file
+  make_dir_if_not_exist                    ## Create Skeleton
+  backup_os_mysql $BASEMARKER $SUFFIX
+
+}
 
 function backup {
 
@@ -96,11 +107,11 @@ function pid {
 
 function import_base {
   for pool in ${POOLS[@]}; do
-#    echo $pool
-#    declare -a img=("")
+    debug $pool
+    debug $BASEDEST
     declare -a img=(`ls $BASEDEST/$pool/*.img | sed 's#.img$##' 2>/dev/null`)
     if [ ! "$img" == "" ] ; then 
-#      echo $(ls $BASEDEST/$pool/*.img| sed 's#.img$##' 2>/dev/null)
+      echo $(ls $BASEDEST/$pool/*.img| sed 's#.img$##' 2>/dev/null)
       for i in ${img[@]} ; do
         debug import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
         rbd import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
@@ -165,7 +176,10 @@ function make_dir_if_not_exist {
   else
     debug "creating folder $DEST"
     mkdir -p $DEST
+    debug "creating folder $BASEDEST"
     mkdir -p $BASEDEST
+    debug "creating folder $MYSQLDEST"
+    mkdir -p $MYSQLDEST
     for pool in ${POOLS[@]}; do
       debug creating ${DEST}/${pool}
       mkdir -p ${DEST}/${pool}
@@ -281,6 +295,13 @@ declare -a removed_images
  done
 
 }
+
+function backup_os_mysql {
+  ssh $CONTR "mkdir -p /data/backups/${SUFFIX}/"
+  ssh $CONTR "innobackupex --copy-back /data/backups/${SUFFIX}/"
+  rsync -av $CONTR:/data/backups/${SUFFIX}/ $MYSQLDIST
+}
+
 
 function create_snapshots {
 

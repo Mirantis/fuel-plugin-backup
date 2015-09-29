@@ -14,8 +14,9 @@ CONTR=`fuel node --env 1 | grep controller | grep True | head -1 | awk  {'print 
 
 BASEDEST="$BACKUP/$BASEMARKER"
 DEST="$BACKUP/$SUFFIX/$MARKER"
+MYSQLDEST="$BACKUP/$SUFFIX/MYSQL"
 #ROOTPWD=`dockerctl shell postgres sudo -u postgres psql -n nailgun -t -c "select generated from attributes where cluster_id=$ENVID" | python -c 'import sys, json; print json.load(sys.stdin)["mysql"]["root_password"]'`
-COPIES="3"
+COPIES="7"
 LCK_FILE=`basename $0`.lck
 #rbd pools to backup
 declare -a POOLS=(images volumes compute) #there only 3 of them: volumes, compute, images
@@ -42,7 +43,7 @@ SCTL="/usr/bin/supervisorctl"
 FUEL="/usr/bin/fuel"
 KILLALL="/usr/bin/killall"
 CURL="/usr/bin/curl"
-
+MYSQL="/usr/bin/mysql"
 #Colors an appearence
 RED="echo -en \\033[1;31m"
 GREEN="echo -en \\033[1;32m"
