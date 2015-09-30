@@ -1,26 +1,23 @@
 attributes:
   metadata:
     weight: 5
-  cloud_type:
-    value: "gamma"
-    label: "Cloud types"
-    weight: 10
-    type: "radio"
-    restrictions:
-      - action: hide
-        condition: settings:backup.metadata.enabled == false
-  backup_additional_config:
-    type: "textarea"
-    validate: "yaml"
+  backup_location:
+    value: '/var/backups'
+    label: 'Backup location'
+    description: 'Please select location of Backups'
+    weight: 20
+    type: "text"
     restrictions:
       - action: hide
         condition: settings:backup.metadata.enabled == false
     weight: 30
-    value: |
-      backup_options:
-        fuel: true
-        ceph_rbd: true
-        mysql: true
-    label: "Other options"
-    description: "Just put here valid yaml"
-
+  numtokeep:
+    value: '7'
+    label: 'Copies to keep'
+    description: 'Number of copies to keep'
+    weight: 20
+    type: "text"
+    restrictions:
+      - action: hide
+        condition: settings:backup.metadata.enabled == false
+    weight: 30

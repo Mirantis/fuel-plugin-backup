@@ -13,15 +13,12 @@ function show_usage {
     echo "  --debug    : to show some debug messages (by default)"
     echo "Commands:"
     echo "  backup      : to backup ceph data"
-    echo "  mysqlbackup : to backup Openstack MySQL data"
     echo "  restore     : to restore backupped ceph data"
-    echo "  mysqlrestore     : to restore backupped ceph data"
     echo "  list        : list all objects in rbd (developemnent option)"
     echo "  purge       : to remove all snapshots of all images (development option)"
     echo
     echo "Examples:"
     echo "  $0 backup"
-    echo "  $0 backupmysql"
     echo "  $0 restore --folder /backup/$SUFFIX"
 
 }
@@ -58,14 +55,6 @@ function parse_options {
     done
 }
 
-
-function mysqlbackup {
-
-  pid                                      ## Create lock-file
-  make_dir_if_not_exist                    ## Create Skeleton
-  backup_os_mysql $BASEMARKER $SUFFIX
-
-}
 
 function backup {
 
@@ -133,12 +122,8 @@ function import_diffs {
       declare -a diffs=(`ls $1/$MARKER/$pool/*.diff | sed 's,//,/,g'| sed 's#.diff$##' | sed 's#'$1'/daily/##'`)
       for i in ${diffs[@]} ; do
         prepare_path=`echo $i | sed 's,//,/,g' | sed 's#'$path'##g' | sed 's#'$MARKER'/##g'`
-#        debug import-diff ${i}.diff $prepare_path
-#        rbd import-diff ${i}.diff $prepare_path
-#        debug import-diff $1/${MARKER}/${i}.diff $prepare_path
         debug import-diff $1/${MARKER}/${prepare_path}.diff $prepare_path
         rbd import-diff $1/${MARKER}/${prepare_path}.diff $prepare_path
-#        rbd import-diff $1/${MARKER}/${i}.diff $prepare_path
       done
     fi
   done
@@ -178,8 +163,6 @@ function make_dir_if_not_exist {
     mkdir -p $DEST
     debug "creating folder $BASEDEST"
     mkdir -p $BASEDEST
-    debug "creating folder $MYSQLDEST"
-    mkdir -p $MYSQLDEST
     for pool in ${POOLS[@]}; do
       debug creating ${DEST}/${pool}
       mkdir -p ${DEST}/${pool}
@@ -246,20 +229,20 @@ declare -a removed_images
   for pool in ${POOLS[@]}; do
     if [ "$pool" == "compute" ]; then
       debug gathering fresh deleted images from OpenStack database NOVA
-      debug `ssh $CONTR "mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova"`
-      debug `ssh $CONTR "mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova"`
-      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova" | tr '\n' ' '`
-      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova" | tr '\n' ' '`
+      debug `mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova`
+      debug `mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova`
+      removed_images+=`mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova | tr '\n' ' '`
+      removed_images+=`mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova | tr '\n' ' '`
 
     elif [ "$pool" == "volumes" ]; then
       debug gathering fresh deleted images from OpenStack database CINDER
-      debug `ssh $CONTR "mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder"`
-      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder" | tr '\n' ' '`
-      
+      debug `mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder`
+      removed_images+=`mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder | tr '\n' ' '`
+
     elif [ "$pool" == "images" ]; then
       debug gathering fresh deleted images from OpenStack database GLANCE
-      debug `ssh $CONTR "mysql -N -s -r -e \"select id from images where status='deleted'\" glance"`
-      removed_images+=`ssh $CONTR "mysql -N -s -r -e \"select id from images where status='deleted'\" glance" | tr '\n' ' '`
+      debug `mysql -N -s -r -e \"select id from images where status='deleted'\" glance`
+      removed_images+=`mysql -N -s -r -e \"select id from images where status='deleted'\" glance | tr '\n' ' '`
 
     else
       debug it seems that we use non openstack environment
@@ -295,13 +278,6 @@ declare -a removed_images
  done
 
 }
-
-function backup_os_mysql {
-  ssh $CONTR "mkdir -p /data/backups/${SUFFIX}/"
-  ssh $CONTR "innobackupex --copy-back /data/backups/${SUFFIX}/"
-  rsync -av $CONTR:/data/backups/${SUFFIX}/ $MYSQLDIST
-}
-
 
 function create_snapshots {
 
@@ -364,55 +340,6 @@ function export_diff_from_base_to_now {
 
 }
 
-
-function retry_checker {
-
-    tries=0
-    echo "checking with command \"$*\""
-    until eval $*; do
-      rc=$?
-      ((tries++))
-      echo "try number $tries"
-      echo "return code is $rc"
-      if [ $tries -gt $CHECK_RETRIES ]; then
-      failure=1
-      break
-    fi
-      sleep 1
-    done
-
-}
-
-
-function check_ready {
-
-    #Uses a custom command to ensure a container is ready
-    update_credentials
-    failure=0
-    echo "checking that node or service is available: $1 $2"
-    case $1 in
-      node) retry_checker "fuel node | grep '$2' | grep 'True'" ;;
-      *) echo "No defined test for determining if $1 is ready.";;
-    esac
-
-    if [ $failure -eq 1 ]; then
-      echo "ERROR: $1 failed to start."
-      return 1
-    else
-      echo "$1 is ready."
-      return 0
-    fi
-
-}
-
-function update_credentials {
-
-    credentialfile=$(mktemp /tmp/servicepws.XXXXX)
-    $GSC $ASTUTE_YAML > $credentialfile
-    . $credentialfile
-    rm -f $credentialfile
-
-}
 
 function debug {
 

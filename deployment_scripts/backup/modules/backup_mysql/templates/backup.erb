@@ -4,10 +4,9 @@ exec > /tmp/backup_databases.output
 exec 2>&1
 
 PATH="$PATH:/usr/local/bin"
-BACKUP_DIR=/var/backups
-#BACKUP_DIR=bhm1
+BACKUP_DIR=<%= @backup_location %>
 BACKUP_LOG=database-backup.log
-NUM_TO_KEEP=6
+NUM_TO_KEEP="<%= @numtokeep %>"
 
 innobackupex --defaults-extra-file=/root/.my.cnf $BACKUP_DIR > $BACKUP_LOG
 
@@ -20,8 +19,6 @@ fi
 
 LATEST_BACKUP=`ls -t $BACKUP_DIR | head -1`
 
-# (alanmeadows) we also take a dump of every database we find in the innobackup
-# because we're paranoid, and innobackups have failed to restore in the past
 MYCNFOK=1
 if [ ! -e /root/.my.cnf ]; then
    MYCNFOK=0
