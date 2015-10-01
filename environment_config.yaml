@@ -4,7 +4,7 @@ attributes:
   backmysql:
     value: true
     label: "MySQL backup?"
-    description: "If selected mysql will be backed up"
+    description: "If selected mysql data will be backed up to $backup_location on primary-controller node"
     weight: 10
     type: "checkbox"
     restrictions:
@@ -12,8 +12,8 @@ attributes:
         condition: not (settings:backup.metadata.enabled == true)
   backetc:
     value: true
-    label: "Node info + /etc backup?"
-    description: "If selected then folder /etc and key-information about all nodes will be backed up"
+    label: "Nodes info + /etc backup?"
+    description: "If selected then folder /etc and key-information from all nodes will be backed up to $backup_location on primary-controller node"
     weight: 10
     type: "checkbox"
     restrictions:
@@ -21,8 +21,8 @@ attributes:
         condition: not (settings:backup.metadata.enabled == true)
   backceph:
     value: false
-    label: "Ceph-RBD Backup?"
-    description: "If selected Ceph-RBD will be backed up"
+    label: "Ceph rbd backup?"
+    description: "If selected Ceph rbd-pools images, compute, volumes will be backed up to $backup_location on primary-controller node.\nDANGER!!! This will backup whole cloud data!"
     weight: 10
     type: "checkbox"
     restrictions:
@@ -30,8 +30,8 @@ attributes:
         condition: not (settings:backup.metadata.enabled == true and settings:storage.volumes_ceph.value == true)
   backfuel:
     value: false
-    label: "Fuel Backup?"
-    description: "If selected Fuel-master backup will be made by cron. DANGER!!! 1 copy ±= 11GB of space."
+    label: "Fuel backup?"
+    description: "If selected Fuel-master will be backed up to $backup_location on primary-controller node\nDANGER!!! 1 copy ±= 11GB of space."
     weight: 10
     type: "checkbox"
     restrictions:
@@ -40,7 +40,7 @@ attributes:
   backup_location:
     value: '/var/backups'
     label: 'Backup location'
-    description: 'Please select location of Backups'
+    description: 'Please select location of backups on primary-controller node'
     weight: 20
     type: "text"
     restrictions:
@@ -57,3 +57,4 @@ attributes:
       - action: hide
         condition: not (settings:backup.metadata.enabled == true )
     weight: 32
+    

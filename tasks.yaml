@@ -22,4 +22,10 @@
     puppet_modules: /etc/puppet/modules:/etc/puppet/modules/osnailyfacter/modular/backup/modules/
     timeout: 600
 
-
+- role: ['primary-controller']
+  stage: post_deployment/6060
+  type: puppet
+  parameters:
+    puppet_manifest: /etc/puppet/modules/osnailyfacter/modular/backup/modules/backup_fuel/manifests/backup_fuel.pp
+    puppet_modules: /etc/puppet/modules:/etc/puppet/modules/osnailyfacter/modular/backup/modules/
+    timeout: 600

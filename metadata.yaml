@@ -1,6 +1,6 @@
 name: backup
 title: Environment backup plugin
-version: '1.0.1'
+version: '1.0.2'
 description: Enable this plugin to choise backup options
 fuel_version: ['6.1']
 licenses: ['Apache License Version 2.0']
