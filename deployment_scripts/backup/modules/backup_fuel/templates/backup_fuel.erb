@@ -1,0 +1,40 @@
+#/bin/bash
+
+SSH_KEY="/etc/puppet/modules/osnailyfacter/modular/backup/id_rsa"
+MASTER_IP=`hiera master_ip`
+BACKUP=<%= @backup_location %>
+SUFFIX=$(date +'%Y-%m-%d_%H-%M')
+DEST="$BACKUP/etc/$SUFFIX/"
+LCK_FILE=`basename $0`.lck
+
+function pid {
+  # Am I Running
+  if [ -f "${LCK_FILE}" ]; then
+    MYPID=`head -n 1 $LCK_FILE`
+    while [ -n "`ps -p ${MYPID} | grep ${MYPID}`" ]
+    do
+      echo `basename $0` is already running [$MYPID]
+      exit
+    done
+  fi
+  echo $$ > $LCK_FILE
+}
+
+function make_dir_if_not_exist {
+  if [ -d $DEST ]; then
+    echo "Destination folder already exists"
+  else
+    echo "Creating folder $DEST"
+    mkdir -p $DEST
+  fi
+}
+
+function remove_old_data {
+  ssh -i $SSH_KEY root@${MASTER_IP} rm nodes_info.tar.gz
+}
+
+pid
+make_dir_if_not_exist
+remove_old_data
+ssh -i $SSH_KEY root@${MASTER_IP} /etc/puppet/modules/osnailyfacter/modular/backup/get_node_info.sh
+scp -i $SSH_KEY root@${MASTER_IP}:nodes_info.tar.gz $DEST

@@ -1,6 +1,42 @@
 attributes:
   metadata:
     weight: 5
+  backmysql:
+    value: true
+    label: "MySQL backup?"
+    description: "If selected mysql will be backed up"
+    weight: 10
+    type: "checkbox"
+    restrictions:
+      - action: hide
+        condition: not (settings:backup.metadata.enabled == true)
+  backetc:
+    value: true
+    label: "Node info + /etc backup?"
+    description: "If selected then folder /etc and key-information about all nodes will be backed up"
+    weight: 10
+    type: "checkbox"
+    restrictions:
+      - action: hide
+        condition: not (settings:backup.metadata.enabled == true)
+  backceph:
+    value: false
+    label: "Ceph-RBD Backup?"
+    description: "If selected Ceph-RBD will be backed up"
+    weight: 10
+    type: "checkbox"
+    restrictions:
+      - action: hide
+        condition: not (settings:backup.metadata.enabled == true and settings:storage.volumes_ceph.value == true)
+  backfuel:
+    value: false
+    label: "Fuel Backup?"
+    description: "If selected Fuel-master backup will be made by cron. DANGER!!! 1 copy ±= 11GB of space."
+    weight: 10
+    type: "checkbox"
+    restrictions:
+      - action: hide
+        condition: not (settings:backup.metadata.enabled == true)
   backup_location:
     value: '/var/backups'
     label: 'Backup location'
@@ -9,7 +45,7 @@ attributes:
     type: "text"
     restrictions:
       - action: hide
-        condition: settings:backup.metadata.enabled == false
+        condition: not (settings:backup.metadata.enabled == true )
     weight: 30
   numtokeep:
     value: '7'
@@ -19,5 +55,5 @@ attributes:
     type: "text"
     restrictions:
       - action: hide
-        condition: settings:backup.metadata.enabled == false
-    weight: 30
+        condition: not (settings:backup.metadata.enabled == true )
+    weight: 32

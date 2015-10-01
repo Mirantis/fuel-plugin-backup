@@ -99,7 +99,7 @@ function import_base {
     debug $pool
     debug $BASEDEST
     declare -a img=(`ls $BASEDEST/$pool/*.img | sed 's#.img$##' 2>/dev/null`)
-    if [ ! "$img" == "" ] ; then 
+    if [ ! "$img" == "" ] ; then
       echo $(ls $BASEDEST/$pool/*.img| sed 's#.img$##' 2>/dev/null)
       for i in ${img[@]} ; do
         debug import --image-format 2 ${i}.img `echo $i | sed 's#'$BASEDEST'/##'`
@@ -134,19 +134,19 @@ function check_the_path {
 
   debug $1
   rc=`echo "$1" | grep $BACKUP &> /dev/null; echo $?`
-  if [ "$1" == "" ]; then 
+  if [ "$1" == "" ]; then
     ${YELLOW}
     echo "Please provide --folder option"
     ${RESET}
     exit 1
   elif [[ ! -e "$1" ]]; then
     ${RED}
-    echo "Check the path, there should be --folder /backup/$SUFFIX option"; 
+    echo "Check the path, there should be --folder /backup/$SUFFIX option";
     ${RESET}
     exit 1
   elif [[ "$rc" > "0" ]]; then
     ${RED}
-    echo "Check the path, should be like $DEST"; 
+    echo "Check the path, should be like $DEST";
     ${RESET}
     exit 1
   fi
@@ -229,20 +229,20 @@ declare -a removed_images
   for pool in ${POOLS[@]}; do
     if [ "$pool" == "compute" ]; then
       debug gathering fresh deleted images from OpenStack database NOVA
-      debug `mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova`
-      debug `mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova`
-      removed_images+=`mysql -N -s -r -e \"select uuid from instances where vm_state='deleted'\" nova | tr '\n' ' '`
-      removed_images+=`mysql -N -s -r -e \"select uuid from s3_images where deleted='1'\" nova | tr '\n' ' '`
+      mysql -N -s -r -e "select uuid from instances where vm_state='deleted'" nova
+      mysql -N -s -r -e "select uuid from s3_images where deleted='1'" nova
+      removed_images+=`mysql -N -s -r -e "select uuid from instances where vm_state='deleted'" nova | tr '\n' ' '`
+      removed_images+=`mysql -N -s -r -e "select uuid from s3_images where deleted='1'" nova | tr '\n' ' '`
 
     elif [ "$pool" == "volumes" ]; then
       debug gathering fresh deleted images from OpenStack database CINDER
-      debug `mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder`
-      removed_images+=`mysql -N -s -r -e \"select id from volumes where status='deleted'\" cinder | tr '\n' ' '`
+      mysql -N -s -r -e "select id from volumes where status='deleted'" cinder
+      removed_images+=`mysql -N -s -r -e "select id from volumes where status='deleted'" cinder | tr '\n' ' '`
 
     elif [ "$pool" == "images" ]; then
       debug gathering fresh deleted images from OpenStack database GLANCE
-      debug `mysql -N -s -r -e \"select id from images where status='deleted'\" glance`
-      removed_images+=`mysql -N -s -r -e \"select id from images where status='deleted'\" glance | tr '\n' ' '`
+      mysql -N -s -r -e "select id from images where status='deleted'" glance
+      removed_images+=`mysql -N -s -r -e "select id from images where status='deleted'" glance | tr '\n' ' '`
 
     else
       debug it seems that we use non openstack environment
@@ -315,10 +315,10 @@ function export_base_images {
   for pool in ${POOLS[@]}; do
     images=$(rbd -p $pool ls 2>/dev/null)
     for image in $(echo $images); do
-      if [ ! -e "$BASEDEST/$pool/${image}.img" ] ; then 
+      if [ ! -e "$BASEDEST/$pool/${image}.img" ] ; then
         debug exporting BASE image $pool/$image $BASEDEST/$pool/$image.img
         rbd export $pool/$image $BASEDEST/$pool/${image}.img >/dev/null 2>&1
-      fi 
+      fi
     done
   done
 
@@ -330,7 +330,7 @@ function export_diff_from_base_to_now {
       images=$(rbd -p $pool ls 2>/dev/null)
       for image in $(echo $images); do
         latest_base=`rbd snap ls $pool/$image | grep -v "SNAPID" | grep $BASEMARKER | sort -n | head -n 1 |awk '{print $2}'`
-        if [ ! -e "$DEST/$pool/${image}.diff" ] ; then 
+        if [ ! -e "$DEST/$pool/${image}.diff" ] ; then
           debug export-diff $pool/$image --from-snap $latest_base $DEST/$pool/$image.diff
           rbd export-diff $pool/$image --from-snap $latest_base $DEST/$pool/${image}.diff >/dev/null 2>&1
         fi

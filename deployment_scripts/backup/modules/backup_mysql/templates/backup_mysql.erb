@@ -4,11 +4,12 @@ exec > /tmp/backup_databases.output
 exec 2>&1
 
 PATH="$PATH:/usr/local/bin"
-BACKUP_DIR=<%= @backup_location %>
+BACKUP_DIR=<%= @backup_location %>/mysql/
 BACKUP_LOG=database-backup.log
 NUM_TO_KEEP="<%= @numtokeep %>"
+DEFAULTS_FILE="/etc/mysql/conf.d/password.cnf"
 
-innobackupex --defaults-extra-file=/root/.my.cnf $BACKUP_DIR > $BACKUP_LOG
+innobackupex --defaults-extra-file=$DEFAULTS_FILE $BACKUP_DIR > $BACKUP_LOG
 
 BACKUP_RETURN_CODE=$?
 
@@ -20,12 +21,12 @@ fi
 LATEST_BACKUP=`ls -t $BACKUP_DIR | head -1`
 
 MYCNFOK=1
-if [ ! -e /root/.my.cnf ]; then
+if [ ! -e $DEFAULTS_FILE ]; then
    MYCNFOK=0
-   echo "The file /root/.my.cnf does not exist, and is required to run mysqldump"
-   if ! grep -q mysqldump /root/.my.cnf; then
+   echo "The file $DEFAULTS_FILE does not exist, and is required to run mysqldump"
+   if ! grep -q mysqldump $DEFAULTS_FILE; then
      MYCNFOK=0
-     echo "The file /root/.my.cnf does not contain credentials for mysqldump which is required"
+     echo "The file $DEFAULTS_FILE does not contain credentials for mysqldump which is required"
    fi;
 fi;
 if [ $MYCNFOK -eq 1 ]; then
@@ -33,7 +34,7 @@ if [ $MYCNFOK -eq 1 ]; then
   cd $BACKUP_DIR/$LATEST_BACKUP
   for db in `find . -type d | sed "s/.\///" | grep -v -E '^.$'`;
   do
-     mysqldump --defaults-extra-file=/root/.my.cnf --add-drop-table $db | gzip --fast > $db.gz
+     mysqldump --defaults-extra-file=$DEFAULTS_FILE --add-drop-table $db | gzip --fast > $db.gz
   done
   cd $OLD_PWD
 fi;

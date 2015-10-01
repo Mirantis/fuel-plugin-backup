@@ -24,5 +24,7 @@ function set_min_controller_count {
 
 set_min_controller_count 0
 cp -a ${DIR}/deployment_scripts/backup /etc/puppet/$FUEL_REL/modules/osnailyfacter/modular/
+cp /root/.ssh/id.rsa /etc/puppet/$FUEL_REL/modules/osnailyfacter/modular/backup/
+chmod 600 /etc/puppet/$FUEL_REL/modules/osnailyfacter/modular/backup/id_rsa
 $FUEL rel --sync-deployment-tasks --dir /etc/puppet/$FUEL_REL
 

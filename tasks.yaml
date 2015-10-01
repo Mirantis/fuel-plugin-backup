@@ -4,8 +4,7 @@
   parameters:
     puppet_manifest: /etc/puppet/modules/osnailyfacter/modular/backup/modules/backup_mysql/manifests/backup_mysql.pp
     puppet_modules: /etc/puppet/modules:/etc/puppet/modules/osnailyfacter/modular/backup/modules/
-    timeout: 3600
-
+    timeout: 600
 
 - role: ['primary-controller']
   stage: post_deployment/6040
@@ -13,6 +12,14 @@
   parameters:
     puppet_manifest: /etc/puppet/modules/osnailyfacter/modular/backup/modules/backup_ceph/manifests/backup_ceph.pp
     puppet_modules: /etc/puppet/modules:/etc/puppet/modules/osnailyfacter/modular/backup/modules/
-    timeout: 3600
+    timeout: 600
+
+- role: ['primary-controller']
+  stage: post_deployment/6050
+  type: puppet
+  parameters:
+    puppet_manifest: /etc/puppet/modules/osnailyfacter/modular/backup/modules/backup_etc/manifests/backup_etc.pp
+    puppet_modules: /etc/puppet/modules:/etc/puppet/modules/osnailyfacter/modular/backup/modules/
+    timeout: 600
 
 

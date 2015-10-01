@@ -1,11 +1,11 @@
 #!/bin/bash
-#Configuratino file
+#Configuration file
 
 #Global Variables
 MARKER="daily"
 BASEMARKER="backup"  # do not change it, in case of backup cinder volumes. hardcoded in cinder : https://github.com/openstack/cinder/blob/stable/juno/cinder/backup/drivers/ceph.py#L733
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
-BACKUP="<%= @backup_location %>"
+BACKUP="<%= @backup_location %>/ceph"
 
 BASEDEST="$BACKUP/$BASEMARKER"
 DEST="$BACKUP/$SUFFIX/$MARKER"

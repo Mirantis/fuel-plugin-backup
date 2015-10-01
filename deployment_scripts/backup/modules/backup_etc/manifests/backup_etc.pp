@@ -1,29 +1,29 @@
-notice('MODULAR: backup_mysql.pp')
+notice('MODULAR: backup_etc.pp')
 
 $backup_hash              = hiera_hash('backup', {})
 $backup_location          = pick($backup_hash['backup_location'], '/var/backups')
 $numtokeep                = pick($backup_hash['numtokeep'], '7')
-$backmysql                = pick($backup_hash['backmysql'], false)
+$backetc                  = pick($backup_hash['backetc'], false)
 
-if $backmysql['enabled'] {
+if $backetc['enabled'] {
   file { "${backup_location}" :
     ensure => directory
   } ->
-  file { "${backup_location}/mysql" :
+  file { "${backup_location}/etc" :
     ensure => directory
   }
 
-  file {"${backup_location}/mysql/backup_mysql.sh":
-    content => template("backup_mysql/backup_mysql.erb"),
+  file {"${backup_location}/etc/backup_etc.sh":
+    content => template("backup_etc/backup_etc.erb"),
     owner   => 'root',
     group   => 'root',
     mode    => '0755',
   }
 
-  cron { 'backup_mysql':
-    command => "${backup_location}/mysql/backup_mysql.sh",
+  cron { 'backup_etc':
+    command => "${backup_location}/etc/backup_etc.sh",
     user    => 'root',
     minute  => '38',
-    hour    => ['4','12','20'],
+    hour    => ['6','14','22'],
   }
 }
