@@ -36,5 +36,5 @@ function remove_old_data {
 pid
 make_dir_if_not_exist
 remove_old_data
-ssh -i $SSH_KEY root@${MASTER_IP} /etc/puppet/modules/osnailyfacter/modular/backup/get_node_info.sh
-scp -i $SSH_KEY root@${MASTER_IP}:nodes_info.tar.gz $DEST
+ssh -i $SSH_KEY -o StrictHostKeyChecking=no root@${MASTER_IP} /etc/puppet/modules/osnailyfacter/modular/backup/get_node_info.sh
+scp -i $SSH_KEY -o StrictHostKeyChecking=no root@${MASTER_IP}:nodes_info.tar.gz $DEST
