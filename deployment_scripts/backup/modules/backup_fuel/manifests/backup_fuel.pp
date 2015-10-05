@@ -24,6 +24,6 @@ if $backfuel {
     command => "${backup_location}/fuel/backup_fuel.sh",
     user    => 'root',
     minute  => '38',
-    hour    => ['7','16','23'],
+    hour    => '7',
   }
 }

@@ -24,6 +24,6 @@ if $backetc {
     command => "${backup_location}/etc/backup_etc.sh",
     user    => 'root',
     minute  => '38',
-    hour    => ['6','14','22'],
+    hour    => '6',
   }
 }

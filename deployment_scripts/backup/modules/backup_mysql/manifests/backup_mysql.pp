@@ -24,6 +24,6 @@ if $backmysql {
     command => "${backup_location}/mysql/backup_mysql.sh",
     user    => 'root',
     minute  => '38',
-    hour    => ['4','12','20'],
+    hour    => '4',
   }
 }

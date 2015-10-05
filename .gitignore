@@ -1,4 +1,3 @@
 *.lck
 .build
 *.pyc
-*.rpm

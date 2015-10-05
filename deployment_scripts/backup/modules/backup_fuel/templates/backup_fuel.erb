@@ -1,10 +1,16 @@
 #/bin/bash
+exec > /tmp/fuel_backup.log
+exec 2>&1
 
 SSH_KEY="/etc/puppet/modules/osnailyfacter/modular/backup/id_rsa"
 MASTER_IP=`hiera master_ip`
 BACKUP=<%= @backup_location %>
+BACKUP_DIR=${BACKUP}/fuel/
+BACKUP_LOG=fuel-backup.log
+
 SUFFIX=$(date +'%Y-%m-%d_%H-%M')
-DEST="$BACKUP/etc/$SUFFIX/"
+DEST="${BACKUP_DIR}/${SUFFIX}/"
+NUM_TO_KEEP=<%= @numtokeep %>
 LCK_FILE=`basename $0`.lck
 
 function pid {
@@ -30,11 +36,29 @@ function make_dir_if_not_exist {
 }
 
 function remove_old_data {
-  ssh -i $SSH_KEY root@${MASTER_IP} rm nodes_info.tar.gz
+  ssh -i $SSH_KEY -o StrictHostKeyChecking=no root@${MASTER_IP} rm -f $backup
+  echo "Clearing earliest backup directories..."
+  NUM_LOCAL_BACKUPS=`ls -l $BACKUP_DIR | grep '^d' | wc -l`
+  while [ $NUM_LOCAL_BACKUPS -gt $NUM_TO_KEEP ]
+  do
+    EARLIEST_BACKUP=`ls -tr $BACKUP_DIR | head -1`
+    echo "Deleting $EARLIEST_BACKUP..."
+    rm -rf "$BACKUP_DIR/$EARLIEST_BACKUP"
+    NUM_LOCAL_BACKUPS=`ls -l $BACKUP_DIR | grep '^d' | wc -l`
+  done
 }
 
+function check_return_code {
+  BACKUP_RETURN_CODE=$?
+  if [[ $BACKUP_RETURN_CODE != 0 ]]; then
+    echo "There was an error backing up the databases. Return code was $BACKUP_RETURN_CODE. Please check log file."
+    exit $BACKUP_RETURN_CODE
+  fi
+}
 pid
 make_dir_if_not_exist
+backup=$(ssh -i $SSH_KEY -o StrictHostKeyChecking=no root@${MASTER_IP} dockerctl backup | grep "Backup complete. File is available at" | awk '{print $7}')
+check_return_code
+scp -i $SSH_KEY  root@${MASTER_IP}:${backup} $DEST
 remove_old_data
-ssh -i $SSH_KEY -o StrictHostKeyChecking=no root@${MASTER_IP} /etc/puppet/modules/osnailyfacter/modular/backup/get_node_info.sh
-scp -i $SSH_KEY -o StrictHostKeyChecking=no root@${MASTER_IP}:nodes_info.tar.gz $DEST
+

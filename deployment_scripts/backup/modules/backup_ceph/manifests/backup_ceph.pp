@@ -41,6 +41,6 @@ if $backceph {
     command => '/var/backups/ceph/backup_ceph.sh',
     user    => 'root',
     minute  => '48',
-    hour    => ['5','13','21'],
+    hour    => '5',
   }
 }
