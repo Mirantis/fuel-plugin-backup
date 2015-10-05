@@ -5,7 +5,7 @@ $backup_location          = pick($backup_hash['backup_location'], '/var/backups'
 $numtokeep                = pick($backup_hash['numtokeep'], '7')
 $backmysql                = pick($backup_hash['backmysql'], false)
 
-if $backmysql['enabled'] {
+if $backmysql {
   file { "${backup_location}" :
     ensure => directory
   } ->

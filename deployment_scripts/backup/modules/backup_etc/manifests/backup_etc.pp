@@ -5,7 +5,7 @@ $backup_location          = pick($backup_hash['backup_location'], '/var/backups'
 $numtokeep                = pick($backup_hash['numtokeep'], '7')
 $backetc                  = pick($backup_hash['backetc'], false)
 
-if $backetc['enabled'] {
+if $backetc {
   file { "${backup_location}" :
     ensure => directory
   } ->

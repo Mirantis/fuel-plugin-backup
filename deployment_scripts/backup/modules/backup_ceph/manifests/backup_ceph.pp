@@ -5,7 +5,7 @@ $backup_location          = pick($backup_hash['backup_location'], '/var/backups'
 $numtokeep                = pick($backup_hash['numtokeep'], '7')
 $backceph                 = pick($backup_hash['backceph'], false)
 
-if $backceph['enabled'] {
+if $backceph {
   file { "$backup_location" :
     ensure => directory
   } ->

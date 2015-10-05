@@ -5,7 +5,7 @@ $backup_location          = pick($backup_hash['backup_location'], '/var/backups'
 $numtokeep                = pick($backup_hash['numtokeep'], '7')
 $backfuel                 = pick($backup_hash['backfuel'], false)
 
-if $backfuel['enabled'] {
+if $backfuel {
   file { "${backup_location}" :
     ensure => directory
   } ->
