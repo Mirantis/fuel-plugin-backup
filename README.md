@@ -41,8 +41,8 @@ Install fpb Python module:
 
 Install system packages fpb module relies on:
 
-*If you use Ubuntu, install packages createrepo rpm dpkg-dev
-*If you use CentOS, install packages createrepo dpkg-devel dpkg-dev rpm rpm-build
+* If you use Ubuntu, install packages createrepo rpm dpkg-dev
+* If you use CentOS, install packages createrepo dpkg-devel dpkg-dev rpm rpm-build
 
 Clone plugin repository and run fpb there:
 ```
