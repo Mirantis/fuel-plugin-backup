@@ -1,15 +1,15 @@
 name: backup
 title: Environment backup plugin
-version: '1.0.3'
+version: '1.1.0'
 description: Enable this plugin to choise backup options
-fuel_version: ['6.1']
+fuel_version: ['7.0']
 licenses: ['Apache License Version 2.0']
 authors: ['Andrey Kirilochkin', 'akirilochkin@mirantis.com']
 homepage: 'https://github.com/andrei4ka/fuel-backup-plugin'
 groups: []
 releases:
   - os: ubuntu
-    version: 2014.2.2-6.1
+    version: 2015.1.0-7.0
     mode: ['ha', 'multinode']
     deployment_scripts_path: deployment_scripts/
     repository_path: repositories/ubuntu
