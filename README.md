@@ -20,7 +20,7 @@ You can change the following options from Fuel UI:
 
 3.1. ETC Backup from cloud-nodes. Just to have information about all nodes in case of disaster recovery.
 
-3.2. FUEL-backup. It is necessary to have information about all cloud nodes their roles and configuration, and to be able to add/remove nodes, manage clusters.
+3.2. FUEL-backup. It is necessary to have information about all cloud nodes their roles and configuration to be able to add/remove nodes, manage clusters.
 
 3.3. CEPH-RBD incremental backup (if enabled as a storage). When we use ceph-rbd for all cloud needs such as volumes, images, ephemeral storages in couple with mysql db backup, we have full information about all virtual storages, and have the ability to restore cloud in case of disaster. 
 
@@ -46,12 +46,12 @@ Install system packages fpb module relies on:
 
 Clone plugin repository and run fpb there:
 ```
-[local-workstation]$ git clone https://github.com/sheva-serg/fuel-plugin-swift
-[local-workstation]$ fpb --build fuel-plugin-swift
+[local-workstation]$ git clone git@github.com:Mirantis/fuel-plugin-backup.git
+[local-workstation]$ fpb --build fuel-plugin-backup
 ```
 Check if rpm file was created:
 ```
-[local-workstation]$ ls -al fuel-plugin-swift | grep rpm
+[local-workstation]$ ls -al fuel-plugin-backup | grep rpm
 -rw-rw-r--.  1 user user 656036 Jun 30 10:57 backup-1.0-1.0.0-1.noarch.rpm
 ```
 Upload rpm file to fuel-master node and install it. Assuming you've put rpm into /tmp directory on fuel-master:
@@ -80,4 +80,4 @@ Deployment process
 2. Navigate to 'Nodes' section of UI, press 'Add nodes button'
 3. Assign controller/compute roles to the respective nodes.
 4. Push Deploy Changes button.
-5. After deployment process nn primary-controller node (node with controller role with minimal node-id) will create folder <backup_data_location> that contains folders [etc, fuel, mysql, ceph] (optional) that contains corresponding bash-script that is responsible for creation of each type of backup. At the same moment crontab-rule for running this script once a day(at 4:38, 5:38, 6:38, 7:38) will be created. 
+5. After deployment process primary-controller node (node with controller role with minimal node-id) will be created folder <backup_data_location> that contains folders [etc, fuel, mysql, ceph] (optional) each folder contains corresponding bash-script that is responsible for creation of backup. Scripts will be managed by crontab-rule once a day(at 4:38, 5:38, 6:38, 7:38). 
